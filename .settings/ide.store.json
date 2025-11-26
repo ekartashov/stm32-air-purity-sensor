@@ -1,0 +1,7 @@
+{
+  "board": "STEVAL-STWINKT1B",
+  "device": "STM32L4R9ZIJ6",
+  "toolchain": "GCC",
+  "core": "Cortex-M4",
+  "order": 0
+}
