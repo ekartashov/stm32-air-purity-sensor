@@ -1,34 +1,59 @@
+/**
+ * @file driver_pwm-buzzer_interface.c
+ * @brief Implementation of PWM buzzer interface functions
+ *
+ * This file implements the low-level interface functions for controlling
+ * a buzzer using PWM signals on TIM2 channel 1.
+ */
+
 #include <stdint.h>
 #include "main.h"
 #include "driver_pwm-buzzer_interface.h"
 
 extern TIM_HandleTypeDef htim2;
 
-//---------------------------------------------------------------------------
-// Simple delay wrapper
-//---------------------------------------------------------------------------
+/**
+ * @brief Delay for specified duration
+ *
+ * This function provides a blocking delay for the specified number of
+ * milliseconds using the HAL_Delay function.
+ *
+ * @param duration_ms Delay duration in milliseconds
+ */
 void Buzzer_Delay(uint32_t duration_ms)
 {
     HAL_Delay(duration_ms);
 }
 
-//---------------------------------------------------------------------------
-// Start / stop PWM on TIM2 CH1
-//---------------------------------------------------------------------------
+/**
+ * @brief Start PWM output on buzzer
+ *
+ * Enables PWM output on TIM2 channel 1 for the buzzer.
+ */
 void Buzzer_PWM_Start(void)
 {
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 }
 
+/**
+ * @brief Stop PWM output on buzzer
+ *
+ * Disables PWM output on TIM2 channel 1 for the buzzer.
+ */
 void Buzzer_PWM_Stop(void)
 {
     HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
 }
 
-//---------------------------------------------------------------------------
-// Set PWM frequency (Hz) assuming TIM2 tick = 1 MHz (from CubeMX config)
-// f = 1 MHz / (ARR + 1)  =>  ARR = (1 MHz / f) - 1
-//---------------------------------------------------------------------------
+/**
+ * @brief Set PWM frequency for buzzer
+ *
+ * Calculates and sets the PWM frequency for the buzzer based on the
+ * desired frequency. The timer is configured to generate the specified
+ * frequency using the timer's auto-reload register.
+ *
+ * @param freq_hz Target frequency in Hertz
+ */
 void Buzzer_PWM_SetFrequency(uint32_t freq_hz)
 {
     if (freq_hz == 0U) {
@@ -53,9 +78,14 @@ void Buzzer_PWM_SetFrequency(uint32_t freq_hz)
     __HAL_TIM_SET_COUNTER(&htim2, 0);
 }
 
-//---------------------------------------------------------------------------
-// Set duty cycle (0..100 %) on TIM2 CH1
-//---------------------------------------------------------------------------
+/**
+ * @brief Set PWM duty cycle for buzzer
+ *
+ * Sets the duty cycle for the PWM signal on TIM2 channel 1.
+ * The duty cycle is expressed as a percentage (0-100).
+ *
+ * @param duty_percent Duty cycle percentage (0-100)
+ */
 void Buzzer_PWM_SetDutyCycle(uint8_t duty_percent)
 {
     if (duty_percent > 100U) {

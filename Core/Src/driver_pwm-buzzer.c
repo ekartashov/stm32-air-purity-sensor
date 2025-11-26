@@ -1,3 +1,11 @@
+/**
+ * @file driver_pwm-buzzer.c
+ * @brief Implementation of PWM buzzer driver functions
+ *
+ * This file implements the higher-level functions for playing tones
+ * and melodies using a buzzer connected to TIM2 channel 1.
+ */
+
 #include <stdint.h>
 #include "main.h"
 #include "driver_pwm-buzzer_interface.h"
@@ -5,6 +13,15 @@
 
 extern TIM_HandleTypeDef htim2;
 
+/**
+ * @brief Play a single tone
+ *
+ * Plays a tone at the specified frequency for the specified duration.
+ * For zero frequency, this function acts as a rest (delay only).
+ *
+ * @param freq_hz Frequency of the tone in Hertz (0 for rest)
+ * @param duration_ms Duration of the tone in milliseconds
+ */
 void Buzzer_PlayTone(uint32_t freq_hz, uint32_t duration_ms)
 {
     if (freq_hz == 0U) {
@@ -30,6 +47,14 @@ void Buzzer_PlayTone(uint32_t freq_hz, uint32_t duration_ms)
     }
 }
 
+/**
+ * @brief Play a melody sequence
+ *
+ * Plays a sequence of notes defined in a melody array. The melody array
+ * should be terminated with a note value of 0xFFFF.
+ *
+ * @param melody Pointer to array of Buzzer_Note structures
+ */
 void Buzzer_PlayMelody(const Buzzer_Note *melody)
 {
     for (size_t i = 0; ; i++)
@@ -45,7 +70,7 @@ void Buzzer_PlayMelody(const Buzzer_Note *melody)
         if (note == 0)
         {
             Buzzer_Delay(duration);
-            
+
             continue;
         }
 
