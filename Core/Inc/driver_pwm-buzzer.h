@@ -1,6 +1,5 @@
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef DRIVER_BUZZER_INTERFACE_H
-#define DRIVER_BUZZER_INTERFACE_H
+#ifndef DRIVER_PWM_BUZZER_H
+#define DRIVER_PWM_BUZZER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -8,9 +7,10 @@ extern "C" {
 
 #include <stdint.h>
 #include <stddef.h>
+#include "driver_pwm-buzzer_interface.h"
 
 
-/* Define notes --------------------------------------------------------------*/
+/* Define notes -------------------------------------------------------------*/
 
 // Note frequencies
 #define NOTE_C4  262
@@ -38,7 +38,8 @@ typedef struct {
 } Buzzer_Note;
 
 
-/* Define functions-----------------------------------------------------------*/
+/* Define functions ---------------------------------------------------------*/
+
 void Buzzer_PlayTone(uint32_t freq_hz, uint32_t duration_ms);
 void Buzzer_PlayMelody(const Buzzer_Note *melody);
 
@@ -47,4 +48,4 @@ void Buzzer_PlayMelody(const Buzzer_Note *melody);
 }
 #endif
 
-#endif /* DRIVER_BUZZER_INTERFACE_H */
+#endif /* DRIVER_PWM_BUZZER_H */
