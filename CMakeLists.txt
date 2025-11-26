@@ -46,11 +46,14 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/driver_pwm-buzzer_interface.c
     Core/Src/driver_pwm-buzzer.c
+    Core/Src/Drivers/OLED/ssd1306.c
+    Core/Src/Drivers/OLED/ssd1306_fonts.c
+    Core/Src/Drivers/OLED/ssd1306_tests.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    Core/Inc/Drivers/OLED
 )
 
 # Add project symbols (macros)

@@ -21,6 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ssd1306.h"
+#include "ssd1306_conf.h"
+#include "ssd1306_tests.h"
 #include "driver_pwm-buzzer.h"
 /* USER CODE END Includes */
 
@@ -107,7 +110,7 @@ int main(void)
   while (1)
   {
     Buzzer_PlayMelody(alert_melody);
-    HAL_Delay(10000);
+    ssd1306_TestAll();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
