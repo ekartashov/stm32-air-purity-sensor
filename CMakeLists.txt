@@ -49,6 +49,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/Drivers/OLED/ssd1306.c
     Core/Src/Drivers/OLED/ssd1306_fonts.c
     Core/Src/Drivers/OLED/ssd1306_tests.c
+    Core/Src/oled_graph.c
 )
 
 # Add include paths
