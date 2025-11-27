@@ -1,42 +1,70 @@
+/**
+ * @file oled_graph.c
+ * @brief OLED graph plotting implementation for sensor data visualization
+ *
+ * This file implements functions for plotting sensor data on an OLED display
+ * using ring buffers to store historical data. It supports various graph arrangements
+ * and provides utilities for displaying sensor trends.
+ */
+
 #include "oled_graph.h"
 #include "ssd1306.h"
 
-// Ring buffers for 4 different sensor data streams
-#define BUFFER_SIZE 100
-float sensor_data_1[BUFFER_SIZE];
-float sensor_data_2[BUFFER_SIZE];
-float sensor_data_3[BUFFER_SIZE];
-float sensor_data_4[BUFFER_SIZE];
+/**
+ * @brief Ring buffers for 4 different sensor data streams
+ *
+ * Four static arrays are defined to store sensor data for each of the four
+ * available ring buffers. Each buffer can hold up to GRAPH_BUFFER_SIZE sensor readings.
+ */
+static float sensor_data_1[GRAPH_BUFFER_SIZE];
+static float sensor_data_2[GRAPH_BUFFER_SIZE];
+static float sensor_data_3[GRAPH_BUFFER_SIZE];
+static float sensor_data_4[GRAPH_BUFFER_SIZE];
 
+/**
+ * @brief Ring buffer structures for sensor data
+ *
+ * Four ring buffer structures initialized with their respective data arrays.
+ * These are used to store and manage sensor readings for graphing.
+ */
 ring_buffer_t sensor_ring_buffer_1 = {
     .data = sensor_data_1,
-    .size = BUFFER_SIZE,
+    .size = GRAPH_BUFFER_SIZE,
     .head = 0,
     .count = 0
 };
 
 ring_buffer_t sensor_ring_buffer_2 = {
     .data = sensor_data_2,
-    .size = BUFFER_SIZE,
+    .size = GRAPH_BUFFER_SIZE,
     .head = 0,
     .count = 0
 };
 
 ring_buffer_t sensor_ring_buffer_3 = {
     .data = sensor_data_3,
-    .size = BUFFER_SIZE,
+    .size = GRAPH_BUFFER_SIZE,
     .head = 0,
     .count = 0
 };
 
 ring_buffer_t sensor_ring_buffer_4 = {
     .data = sensor_data_4,
-    .size = BUFFER_SIZE,
+    .size = GRAPH_BUFFER_SIZE,
     .head = 0,
     .count = 0
 };
 
-// Function to add a value to the ring buffer
+/**
+ * @brief Add a value to the ring buffer
+ *
+ * Adds a new value to the ring buffer, overwriting the oldest value if the
+ * buffer is full. The buffer maintains a circular structure to efficiently
+ * store historical data.
+ *
+ * @param buffer Pointer to the ring buffer structure
+ * @param value Value to be added to the buffer
+ */
 void ring_buffer_push(ring_buffer_t* buffer, float value) {
     if(buffer->count < buffer->size) {
         buffer->count++;
@@ -50,7 +78,17 @@ void ring_buffer_push(ring_buffer_t* buffer, float value) {
     buffer->head = (buffer->head + 1) % buffer->size;
 }
 
-// Function to get value at a specific index (oldest to newest)
+/**
+ * @brief Get a value from the ring buffer at a specific index
+ *
+ * Retrieves a value from the ring buffer at the specified index. The index
+ * represents the position in the buffer history, where 0 is the oldest value
+ * and (count-1) is the newest value.
+ *
+ * @param buffer Pointer to the ring buffer structure
+ * @param index Index of the value to retrieve (0 to count-1)
+ * @return Value at the specified index, or 0.0f if index is invalid
+ */
 float ring_buffer_get(ring_buffer_t* buffer, uint16_t index) {
     if(index >= buffer->count) {
         return 0.0f; // Invalid index
@@ -61,7 +99,20 @@ float ring_buffer_get(ring_buffer_t* buffer, uint16_t index) {
     return buffer->data[actual_index];
 }
 
-// Function to calculate tick positions for adaptive tick drawing
+/**
+ * @brief Calculate tick positions for adaptive tick drawing
+ *
+ * Calculates optimal positions for X and Y axis tick marks based on the
+ * graph dimensions. This function determines the number of ticks and their
+ * positions to provide readable axis labels.
+ *
+ * @param graph_width Width of the graph area in pixels
+ * @param graph_height Height of the graph area in pixels
+ * @param x_tick_positions Array to store calculated X-axis tick positions
+ * @param y_tick_positions Array to store calculated Y-axis tick positions
+ * @param num_x_ticks Pointer to store number of X-axis ticks
+ * @param num_y_ticks Pointer to store number of Y-axis ticks
+ */
 static void calculate_tick_positions(uint8_t graph_width, uint8_t graph_height,
                                      uint8_t* x_tick_positions, uint8_t* y_tick_positions,
                                      uint8_t* num_x_ticks, uint8_t* num_y_ticks) {
@@ -110,7 +161,22 @@ static void calculate_tick_positions(uint8_t graph_width, uint8_t graph_height,
     }
 }
 
-// Function to plot a graph on the OLED display
+/**
+ * @brief Plot a graph on the OLED display
+ *
+ * Plots sensor data from a ring buffer onto the OLED display within the specified
+ * rectangular area. The graph scales the data to fit within the provided dimensions.
+ * It draws axes, tick marks, and plots data points with configurable dot sizes.
+ *
+ * @param buffer Pointer to the ring buffer containing sensor data
+ * @param graph_x X coordinate of the top-left corner of the graph area
+ * @param graph_y Y coordinate of the top-left corner of the graph area
+ * @param graph_width Width of the graph area in pixels
+ * @param graph_height Height of the graph area in pixels
+ * @param dot_size Size of data point markers in pixels
+ * @param min_y Minimum Y value for scaling (0.0f to use automatic scaling)
+ * @param max_y Maximum Y value for scaling (0.0f to use automatic scaling)
+ */
 void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
                 uint8_t graph_width, uint8_t graph_height,
                 uint8_t dot_size, float min_y, float max_y) {
@@ -122,14 +188,14 @@ void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
     // DEBUG: Temporarily disable axes for easier debugging
     // Draw axes
     // X axis
-    // ssd1306_Line(graph_x, graph_y + graph_height - 1,
-    //              graph_x + graph_width - 1, graph_y + graph_height - 1,
-    //              White);
+    ssd1306_Line(graph_x, graph_y + graph_height - 1,
+                 graph_x + graph_width - 1, graph_y + graph_height - 1,
+                 White);
 
     // Y axis
-    // ssd1306_Line(graph_x, graph_y,
-    //              graph_x, graph_y + graph_height - 1,
-    //              White);
+    ssd1306_Line(graph_x, graph_y,
+                 graph_x, graph_y + graph_height - 1,
+                 White);
 
     // Draw tick marks on X axis
     // Adaptive tick drawing based on graph width
@@ -193,6 +259,7 @@ void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
 
     // Find actual min and max values in the buffer
     if(min_y == 0.0f && max_y == 0.0f) {
+        // Only scan the buffer if we're using automatic scaling
         for(uint16_t i = 0; i < buffer->count; i++) {
             float val = ring_buffer_get(buffer, i);
             if(val < actual_min_y) {
@@ -239,7 +306,164 @@ void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
     }
 }
 
-// Helper function to calculate positions for 1 top, 1 bottom graph arrangement
+/**
+ * @brief Plot two graphs from different buffers on the same display area
+ *
+ * Plots sensor data from two different ring buffers onto the OLED display within the specified
+ * rectangular area. The graphs are scaled independently and displayed side by side or stacked.
+ * This function is useful for comparing two different data sets.
+ *
+ * @param buffer1 Pointer to the first ring buffer containing sensor data
+ * @param buffer2 Pointer to the second ring buffer containing sensor data
+ * @param graph_x X coordinate of the top-left corner of the graph area
+ * @param graph_y Y coordinate of the top-left corner of the graph area
+ * @param graph_width Width of the graph area in pixels
+ * @param graph_height Height of the graph area in pixels
+ * @param dot_size Size of data point markers in pixels
+ * @param min_y1 Minimum Y value for scaling of first buffer (0.0f to use automatic scaling)
+ * @param max_y1 Maximum Y value for scaling of first buffer (0.0f to use automatic scaling)
+ * @param min_y2 Minimum Y value for scaling of second buffer (0.0f to use automatic scaling)
+ * @param max_y2 Maximum Y value for scaling of second buffer (0.0f to use automatic scaling)
+ */
+void graph_plot_two_buffers(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
+                           uint8_t graph_x, uint8_t graph_y,
+                           uint8_t graph_width, uint8_t graph_height,
+                           uint8_t dot_size, float min_y1, float max_y1,
+                           float min_y2, float max_y2) {
+    // Validate inputs
+    if(!buffer1 || !buffer2 || graph_width == 0 || graph_height == 0 || dot_size == 0) {
+        return;
+    }
+
+    // If no data in either buffer, return early
+    if(buffer1->count == 0 && buffer2->count == 0) {
+        return;
+    }
+
+    // For simplicity, we'll plot both graphs in the same area with different colors
+    // (Note: This is a simplified version - in practice, you might want to split the area)
+
+    // Plot first buffer
+    if(buffer1->count > 0) {
+        // Determine min and max values for first buffer
+        float actual_min_y1 = (min_y1 != 0.0f || max_y1 != 0.0f) ? min_y1 : buffer1->data[0];
+        float actual_max_y1 = (min_y1 != 0.0f || max_y1 != 0.0f) ? max_y1 : buffer1->data[0];
+
+        // Find actual min and max values in the buffer
+        if(min_y1 == 0.0f && max_y1 == 0.0f) {
+            for(uint16_t i = 0; i < buffer1->count; i++) {
+                float val = ring_buffer_get(buffer1, i);
+                if(val < actual_min_y1) {
+                    actual_min_y1 = val;
+                }
+                if(val > actual_max_y1) {
+                    actual_max_y1 = val;
+                }
+            }
+        }
+
+        // Handle case where all values are the same
+        if(actual_min_y1 == actual_max_y1) {
+            actual_max_y1 += 1.0f;
+        }
+
+        // Scale factor for mapping values to screen coordinates
+        float scale_y1 = (actual_max_y1 - actual_min_y1) / (float)graph_height;
+
+        // Plot data points from first buffer
+        uint16_t num_points1 = (buffer1->count < graph_width) ? buffer1->count : graph_width;
+
+        for(uint16_t i = 0; i < num_points1; i++) {
+            // Access data from newest to oldest (right to left)
+            uint16_t index = (buffer1->head + buffer1->size - 1 - i) % buffer1->size;
+            float value = buffer1->data[index];
+
+            // Map value to screen coordinates - plotting from right to left
+            uint8_t x = graph_x + graph_width - 1 - i;
+            uint8_t y = graph_y + graph_height - 1 - (uint8_t)((value - actual_min_y1) / scale_y1);
+
+            // Draw dot with white color
+            for(uint8_t dx = 0; dx < dot_size; dx++) {
+                for(uint8_t dy = 0; dy < dot_size; dy++) {
+                    if((x + dx < SSD1306_WIDTH) && (y + dy < SSD1306_HEIGHT)) {
+                        ssd1306_DrawPixel(x + dx, y + dy, White);
+                    }
+                }
+            }
+        }
+    }
+
+    // Plot second buffer
+    if(buffer2->count > 0) {
+        // Determine min and max values for second buffer
+        float actual_min_y2 = (min_y2 != 0.0f || max_y2 != 0.0f) ? min_y2 : buffer2->data[0];
+        float actual_max_y2 = (min_y2 != 0.0f || max_y2 != 0.0f) ? max_y2 : buffer2->data[0];
+
+        // Find actual min and max values in the buffer
+        if(min_y2 == 0.0f && max_y2 == 0.0f) {
+            for(uint16_t i = 0; i < buffer2->count; i++) {
+                float val = ring_buffer_get(buffer2, i);
+                if(val < actual_min_y2) {
+                    actual_min_y2 = val;
+                }
+                if(val > actual_max_y2) {
+                    actual_max_y2 = val;
+                }
+            }
+        }
+
+        // Handle case where all values are the same
+        if(actual_min_y2 == actual_max_y2) {
+            actual_max_y2 += 1.0f;
+        }
+
+        // Scale factor for mapping values to screen coordinates
+        float scale_y2 = (actual_max_y2 - actual_min_y2) / (float)graph_height;
+
+        // Plot data points from second buffer
+        uint16_t num_points2 = (buffer2->count < graph_width) ? buffer2->count : graph_width;
+
+        for(uint16_t i = 0; i < num_points2; i++) {
+            // Access data from newest to oldest (right to left)
+            uint16_t index = (buffer2->head + buffer2->size - 1 - i) % buffer2->size;
+            float value = buffer2->data[index];
+
+            // Map value to screen coordinates - plotting from right to left
+            uint8_t x = graph_x + graph_width - 1 - i;
+            uint8_t y = graph_y + graph_height - 1 - (uint8_t)((value - actual_min_y2) / scale_y2);
+
+            // Draw dot with different color (for demonstration, we'll use white)
+            // Note: In a real implementation, you might want to use different colors
+            for(uint8_t dx = 0; dx < dot_size; dx++) {
+                for(uint8_t dy = 0; dy < dot_size; dy++) {
+                    if((x + dx < SSD1306_WIDTH) && (y + dy < SSD1306_HEIGHT)) {
+                        ssd1306_DrawPixel(x + dx, y + dy, White);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief Helper function to calculate positions for 1 top, 1 bottom graph arrangement
+ *
+ * Calculates the positions and dimensions for two graphs arranged vertically.
+ * The top graph takes half the height with a margin, and the bottom graph takes
+ * the remaining space.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the two graphs
+ * @param top_x Pointer to store X coordinate of top graph
+ * @param top_y Pointer to store Y coordinate of top graph
+ * @param top_width Pointer to store width of top graph
+ * @param top_height Pointer to store height of top graph
+ * @param bottom_x Pointer to store X coordinate of bottom graph
+ * @param bottom_y Pointer to store Y coordinate of bottom graph
+ * @param bottom_width Pointer to store width of bottom graph
+ * @param bottom_height Pointer to store height of bottom graph
+ */
 void calculate_positions_1t1b(uint8_t total_width, uint8_t total_height, uint8_t margin,
                               uint8_t* top_x, uint8_t* top_y, uint8_t* top_width, uint8_t* top_height,
                               uint8_t* bottom_x, uint8_t* bottom_y, uint8_t* bottom_width, uint8_t* bottom_height) {
@@ -254,7 +478,25 @@ void calculate_positions_1t1b(uint8_t total_width, uint8_t total_height, uint8_t
     *bottom_height = (total_height - margin) / 2;
 }
 
-// Helper function to calculate positions for 1 left, 1 right graph arrangement
+/**
+ * @brief Helper function to calculate positions for 1 left, 1 right graph arrangement
+ *
+ * Calculates the positions and dimensions for two graphs arranged horizontally.
+ * The left graph takes half the width with a margin, and the right graph takes
+ * the remaining space.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the two graphs
+ * @param left_x Pointer to store X coordinate of left graph
+ * @param left_y Pointer to store Y coordinate of left graph
+ * @param left_width Pointer to store width of left graph
+ * @param left_height Pointer to store height of left graph
+ * @param right_x Pointer to store X coordinate of right graph
+ * @param right_y Pointer to store Y coordinate of right graph
+ * @param right_width Pointer to store width of right graph
+ * @param right_height Pointer to store height of right graph
+ */
 void calculate_positions_1l1r(uint8_t total_width, uint8_t total_height, uint8_t margin,
                              uint8_t* left_x, uint8_t* left_y, uint8_t* left_width, uint8_t* left_height,
                              uint8_t* right_x, uint8_t* right_y, uint8_t* right_width, uint8_t* right_height) {
@@ -269,7 +511,28 @@ void calculate_positions_1l1r(uint8_t total_width, uint8_t total_height, uint8_t
     *right_height = total_height;
 }
 
-// Helper function to calculate positions for 1 top, 2 bottom graph arrangement
+/**
+ * @brief Helper function to calculate positions for 1 top, 2 bottom graph arrangement
+ *
+ * Calculates the positions and dimensions for three graphs arranged with one
+ * wide graph on top and two smaller graphs on the bottom.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the graphs
+ * @param top_x Pointer to store X coordinate of top graph
+ * @param top_y Pointer to store Y coordinate of top graph
+ * @param top_width Pointer to store width of top graph
+ * @param top_height Pointer to store height of top graph
+ * @param bottom1_x Pointer to store X coordinate of first bottom graph
+ * @param bottom1_y Pointer to store Y coordinate of first bottom graph
+ * @param bottom1_width Pointer to store width of first bottom graph
+ * @param bottom1_height Pointer to store height of first bottom graph
+ * @param bottom2_x Pointer to store X coordinate of second bottom graph
+ * @param bottom2_y Pointer to store Y coordinate of second bottom graph
+ * @param bottom2_width Pointer to store width of second bottom graph
+ * @param bottom2_height Pointer to store height of second bottom graph
+ */
 void calculate_positions_1t2b(uint8_t total_width, uint8_t total_height, uint8_t margin,
                              uint8_t* top_x, uint8_t* top_y, uint8_t* top_width, uint8_t* top_height,
                              uint8_t* bottom1_x, uint8_t* bottom1_y, uint8_t* bottom1_width, uint8_t* bottom1_height,
@@ -277,20 +540,41 @@ void calculate_positions_1t2b(uint8_t total_width, uint8_t total_height, uint8_t
     *top_x = 0;
     *top_y = 0;
     *top_width = total_width;
-    *top_height = (total_height - margin) / 3;
+    *top_height = (total_height - margin) / 2;
 
     *bottom1_x = 0;
     *bottom1_y = *top_height + margin;
     *bottom1_width = (total_width - margin) / 2;
-    *bottom1_height = (total_height - margin) / 3;
+    *bottom1_height = (total_height - margin) / 2;
 
     *bottom2_x = *bottom1_width + margin;
     *bottom2_y = *top_height + margin;
     *bottom2_width = (total_width - margin) / 2;
-    *bottom2_height = (total_height - margin) / 3;
+    *bottom2_height = (total_height - margin) / 2;
 }
 
-// Helper function to calculate positions for 2 top, 1 bottom graph arrangement
+/**
+ * @brief Helper function to calculate positions for 2 top, 1 bottom graph arrangement
+ *
+ * Calculates the positions and dimensions for three graphs arranged with two
+ * smaller graphs on top and one wide graph on the bottom.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the graphs
+ * @param top1_x Pointer to store X coordinate of first top graph
+ * @param top1_y Pointer to store Y coordinate of first top graph
+ * @param top1_width Pointer to store width of first top graph
+ * @param top1_height Pointer to store height of first top graph
+ * @param top2_x Pointer to store X coordinate of second top graph
+ * @param top2_y Pointer to store Y coordinate of second top graph
+ * @param top2_width Pointer to store width of second top graph
+ * @param top2_height Pointer to store height of second top graph
+ * @param bottom_x Pointer to store X coordinate of bottom graph
+ * @param bottom_y Pointer to store Y coordinate of bottom graph
+ * @param bottom_width Pointer to store width of bottom graph
+ * @param bottom_height Pointer to store height of bottom graph
+ */
 void calculate_positions_2t1b(uint8_t total_width, uint8_t total_height, uint8_t margin,
                              uint8_t* top1_x, uint8_t* top1_y, uint8_t* top1_width, uint8_t* top1_height,
                              uint8_t* top2_x, uint8_t* top2_y, uint8_t* top2_width, uint8_t* top2_height,
@@ -298,62 +582,128 @@ void calculate_positions_2t1b(uint8_t total_width, uint8_t total_height, uint8_t
     *top1_x = 0;
     *top1_y = 0;
     *top1_width = (total_width - margin) / 2;
-    *top1_height = (total_height - margin) / 3;
+    *top1_height = (total_height - margin) / 2;
 
     *top2_x = *top1_width + margin;
     *top2_y = 0;
     *top2_width = (total_width - margin) / 2;
-    *top2_height = (total_height - margin) / 3;
+    *top2_height = (total_height - margin) / 2;
 
     *bottom_x = 0;
     *bottom_y = *top1_height + margin;
     *bottom_width = total_width;
-    *bottom_height = (total_height - margin) / 3;
+    *bottom_height = (total_height - margin) / 2;
 }
 
-// Helper function to calculate positions for 1 left, 2 right graph arrangement
+/**
+ * @brief Helper function to calculate positions for 1 left, 2 right graph arrangement
+ *
+ * Calculates the positions and dimensions for three graphs arranged with one
+ * tall graph on the left and two shorter graphs on the right.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the graphs
+ * @param left_x Pointer to store X coordinate of left graph
+ * @param left_y Pointer to store Y coordinate of left graph
+ * @param left_width Pointer to store width of left graph
+ * @param left_height Pointer to store height of left graph
+ * @param right1_x Pointer to store X coordinate of first right graph
+ * @param right1_y Pointer to store Y coordinate of first right graph
+ * @param right1_width Pointer to store width of first right graph
+ * @param right1_height Pointer to store height of first right graph
+ * @param right2_x Pointer to store X coordinate of second right graph
+ * @param right2_y Pointer to store Y coordinate of second right graph
+ * @param right2_width Pointer to store width of second right graph
+ * @param right2_height Pointer to store height of second right graph
+ */
 void calculate_positions_1l2r(uint8_t total_width, uint8_t total_height, uint8_t margin,
                              uint8_t* left_x, uint8_t* left_y, uint8_t* left_width, uint8_t* left_height,
                              uint8_t* right1_x, uint8_t* right1_y, uint8_t* right1_width, uint8_t* right1_height,
                              uint8_t* right2_x, uint8_t* right2_y, uint8_t* right2_width, uint8_t* right2_height) {
     *left_x = 0;
     *left_y = 0;
-    *left_width = (total_width - margin) / 3;
+    *left_width = (total_width - margin) / 2;
     *left_height = total_height;
 
     *right1_x = *left_width + margin;
     *right1_y = 0;
-    *right1_width = (total_width - margin) / 3;
+    *right1_width = (total_width - margin) / 2;
     *right1_height = (total_height - margin) / 2;
 
     *right2_x = *left_width + margin;
     *right2_y = *right1_height + margin;
-    *right2_width = (total_width - margin) / 3;
+    *right2_width = (total_width - margin) / 2;
     *right2_height = (total_height - margin) / 2;
 }
 
-// Helper function to calculate positions for 2 left, 1 right graph arrangement
+/**
+ * @brief Helper function to calculate positions for 2 left, 1 right graph arrangement
+ *
+ * Calculates the positions and dimensions for three graphs arranged with two
+ * shorter graphs on the left and one tall graph on the right.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the graphs
+ * @param left1_x Pointer to store X coordinate of first left graph
+ * @param left1_y Pointer to store Y coordinate of first left graph
+ * @param left1_width Pointer to store width of first left graph
+ * @param left1_height Pointer to store height of first left graph
+ * @param left2_x Pointer to store X coordinate of second left graph
+ * @param left2_y Pointer to store Y coordinate of second left graph
+ * @param left2_width Pointer to store width of second left graph
+ * @param left2_height Pointer to store height of second left graph
+ * @param right_x Pointer to store X coordinate of right graph
+ * @param right_y Pointer to store Y coordinate of right graph
+ * @param right_width Pointer to store width of right graph
+ * @param right_height Pointer to store height of right graph
+ */
 void calculate_positions_2l1r(uint8_t total_width, uint8_t total_height, uint8_t margin,
                               uint8_t* left1_x, uint8_t* left1_y, uint8_t* left1_width, uint8_t* left1_height,
                               uint8_t* left2_x, uint8_t* left2_y, uint8_t* left2_width, uint8_t* left2_height,
                               uint8_t* right_x, uint8_t* right_y, uint8_t* right_width, uint8_t* right_height) {
     *left1_x = 0;
     *left1_y = 0;
-    *left1_width = (total_width - margin) / 3;
+    *left1_width = (total_width - margin) / 2;
     *left1_height = (total_height - margin) / 2;
 
     *left2_x = 0;
     *left2_y = *left1_height + margin;
-    *left2_width = (total_width - margin) / 3;
+    *left2_width = (total_width - margin) / 2;
     *left2_height = (total_height - margin) / 2;
 
     *right_x = *left1_width + margin;
     *right_y = 0;
-    *right_width = (total_width - margin) / 3;
+    *right_width = (total_width - margin) / 2;
     *right_height = total_height;
 }
 
-// Helper function to calculate positions for 2 top, 2 bottom graph arrangement
+/**
+ * @brief Helper function to calculate positions for 2 top, 2 bottom graph arrangement
+ *
+ * Calculates the positions and dimensions for four graphs arranged in a 2x2 grid.
+ *
+ * @param total_width Total width of the available area
+ * @param total_height Total height of the available area
+ * @param margin Space between the graphs
+ * @param top1_x Pointer to store X coordinate of top-left graph
+ * @param top1_y Pointer to store Y coordinate of top-left graph
+ * @param top1_width Pointer to store width of top-left graph
+ * @param top1_height Pointer to store height of top-left graph
+ * @param top2_x Pointer to store X coordinate of top-right graph
+ * @param top2_y Pointer to store Y coordinate of top-right graph
+ * @param top2_width Pointer to store width of top-right graph
+ * @param top2_height Pointer to store height of top-right graph
+ * @param bottom1_x Pointer to store X coordinate of bottom-left graph
+ * @param bottom1_y Pointer to store Y coordinate of bottom-left graph
+ * @param bottom1_width Pointer to store width of bottom-left graph
+ * @param bottom1_height Pointer to store height of bottom-left graph
+ * @param bottom2_x Pointer to store X coordinate of bottom-right graph
+ * @param bottom2_y Pointer to store Y coordinate of bottom-right graph
+ * @param bottom2_width Pointer to store width of bottom-right graph
+ * @param bottom2_height Pointer to store height of bottom-right graph
+ */
 void calculate_positions_2t2b(uint8_t total_width, uint8_t total_height, uint8_t margin,
                               uint8_t* top1_x, uint8_t* top1_y, uint8_t* top1_width, uint8_t* top1_height,
                               uint8_t* top2_x, uint8_t* top2_y, uint8_t* top2_width, uint8_t* top2_height,
@@ -504,7 +854,18 @@ void graph_plots_2t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
     graph_plot(buffer4, graph_x + bottom2_x, graph_y + bottom2_y, bottom2_width, bottom2_height, 1, 0.0f, 100.0f);
 }
 
-// Debug function to visualize screen edges and vertices
+/**
+ * @brief Visualize screen edges and vertices for debugging
+ *
+ * This function provides a visual debugging aid that cycles through different
+ * screen visualization modes:
+ * 1. Black screen (no drawing)
+ * 2. Four corner dots only
+ * 3. Rectangle outline around screen
+ * 4. Black screen (everything cleared)
+ *
+ * The visualization cycles through these modes with a blinking effect.
+ */
 void debug_screen_edges(void) {
     static uint8_t blink_phase = 0;
     static uint8_t phase_frame_count = 0;
@@ -558,7 +919,16 @@ void debug_screen_edges(void) {
     phase_frame_count++;
 }
 
-// Simplified function to plot a full-screen graph for debugging
+/**
+ * @brief Plot a full-screen graph for debugging purposes
+ *
+ * This function creates a simple sine wave pattern in the sensor buffer and
+ * plots it across the entire OLED display. It's intended for debugging purposes
+ * to verify that graph plotting functionality works correctly.
+ *
+ * The function fills the sensor buffer with a known pattern, clears the screen,
+ * plots the graph, and then displays a debug visualization of screen edges.
+ */
 void debug_fullscreen_graph(void) {
     // Create a simple sine wave for debugging purposes
     // Fill the buffer with a known pattern

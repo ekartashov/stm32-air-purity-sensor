@@ -108,19 +108,19 @@ int main(void)
 
   // Populate ring buffers with initial sample data for 4 different functions
   // Sine wave
-  for(int i = 0; i < 100; i++) {
+  for(int i = 0; i < GRAPH_BUFFER_SIZE; i++) {
       float value = 50.0f + 20.0f * sinf(i * 0.2f);
       ring_buffer_push(&sensor_ring_buffer_1, value);
   }
 
   // Cosine wave
-  for(int i = 0; i < 100; i++) {
+  for(int i = 0; i < GRAPH_BUFFER_SIZE; i++) {
       float value = 50.0f + 20.0f * cosf(i * 0.2f);
       ring_buffer_push(&sensor_ring_buffer_2, value);
   }
 
   // Tangent wave (scaled)
-  for(int i = 0; i < 100; i++) {
+  for(int i = 0; i < GRAPH_BUFFER_SIZE; i++) {
       float value = 50.0f + 20.0f * tanf(i * 0.1f);
       // Clamp values to prevent extreme spikes
       if(value > 100.0f) value = 100.0f;
@@ -129,7 +129,7 @@ int main(void)
   }
 
   // Square wave approximation
-  for(int i = 0; i < 100; i++) {
+  for(int i = 0; i < GRAPH_BUFFER_SIZE; i++) {
       float value = (i % 20 < 10) ? 20.0f : 80.0f;
       ring_buffer_push(&sensor_ring_buffer_4, value);
   }
@@ -207,7 +207,7 @@ int main(void)
     }
 
     // Draw debug visualization (this will show the blinking dots and screen outline)
-    debug_screen_edges();
+    // debug_screen_edges();
 
     // Update the display
     ssd1306_UpdateScreen();
