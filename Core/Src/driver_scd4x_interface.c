@@ -21,8 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE. 
  *
- * @file      driver_scd4x_interface.h
- * @brief     driver scd4x interface header file
+ * @file      driver_scd4x_interface_template.c
+ * @brief     driver scd4x interface template source file
  * @version   1.0.0
  * @author    Shifeng Li
  * @date      2023-09-25
@@ -34,21 +34,7 @@
  * </table>
  */
 
-#ifndef DRIVER_SCD4X_INTERFACE_H
-#define DRIVER_SCD4X_INTERFACE_H
-
-#include "driver_scd4x.h"
-
-#ifdef __cplusplus
-extern "C"{
-#endif
-
-/**
- * @defgroup scd4x_interface_driver scd4x interface driver function
- * @brief    scd4x interface driver modules
- * @ingroup  scd4x_driver
- * @{
- */
+#include "driver_scd4x_interface.h"
 
 /**
  * @brief  interface iic bus init
@@ -57,7 +43,10 @@ extern "C"{
  *         - 1 iic init failed
  * @note   none
  */
-uint8_t scd4x_interface_iic_init(void);
+uint8_t scd4x_interface_iic_init(void)
+{
+    return 0;
+}
 
 /**
  * @brief  interface iic bus deinit
@@ -66,7 +55,10 @@ uint8_t scd4x_interface_iic_init(void);
  *         - 1 iic deinit failed
  * @note   none
  */
-uint8_t scd4x_interface_iic_deinit(void);
+uint8_t scd4x_interface_iic_deinit(void)
+{
+    return 0;
+}
 
 /**
  * @brief     interface iic bus write command
@@ -78,7 +70,10 @@ uint8_t scd4x_interface_iic_deinit(void);
  *            - 1 write failed
  * @note      none
  */
-uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len);
+uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
+{
+    return 0;
+}
 
 /**
  * @brief      interface iic bus read command
@@ -90,28 +85,27 @@ uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len);
  *             - 1 read failed
  * @note       none
  */
-uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len);
+uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
+{
+    return 0;
+}
 
 /**
  * @brief     interface delay ms
  * @param[in] ms time
  * @note      none
  */
-void scd4x_interface_delay_ms(uint32_t ms);
+void scd4x_interface_delay_ms(uint32_t ms)
+{
+
+}
 
 /**
  * @brief     interface print format data
  * @param[in] fmt format data
  * @note      none
  */
-void scd4x_interface_debug_print(const char *const fmt, ...);
-
-/**
- * @}
- */
-
-#ifdef __cplusplus
+void scd4x_interface_debug_print(const char *const fmt, ...)
+{
+    
 }
-#endif
-
-#endif
