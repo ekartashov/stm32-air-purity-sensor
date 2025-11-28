@@ -75,7 +75,7 @@ void ring_buffer_push(ring_buffer_t* buffer, float value) {
 
     // Insert new value at head position
     buffer->data[buffer->head] = value;
-    buffer->head = (buffer->head + 1) % buffer->size;
+    // buffer->head = (buffer->head + 1) % buffer->size;
 }
 
 /**
