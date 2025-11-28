@@ -35,6 +35,10 @@
  */
 
 #include "driver_scd4x_interface.h"
+#include "stm32l4xx_hal_def.h"
+#include "stm32l4xx_hal_i2c.h"
+
+extern I2C_HandleTypeDef hi2c4;
 
 /**
  * @brief  interface iic bus init
@@ -44,8 +48,15 @@
  * @note   none
  */
 uint8_t scd4x_interface_iic_init(void)
-{
-    return 0;
+{ // chatgpt says this should not be called because we already call MX_I2C4_Init() in main.c
+  /*
+    if(HAL_I2C_Init(&hi2c4) == HAL_OK) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
+  */
 }
 
 /**
@@ -57,7 +68,14 @@ uint8_t scd4x_interface_iic_init(void)
  */
 uint8_t scd4x_interface_iic_deinit(void)
 {
-    return 0;
+
+    if(HAL_I2C_DeInit(&hi2c4) == HAL_OK) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
+
 }
 
 /**
@@ -72,7 +90,12 @@ uint8_t scd4x_interface_iic_deinit(void)
  */
 uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
+  if(HAL_I2C_Master_Transmit(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
+  } 
+  else {
+    return 1;
+  }
 }
 
 /**
@@ -82,12 +105,17 @@ uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
  * @param[in]  len length of the data buffer
  * @return     status code
  *             - 0 success
- *             - 1 read failed
+*             - 1 read failed
  * @note       none
  */
 uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
+  if(HAL_I2C_Master_Receive(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
+  } 
+  else {
+    return 1;
+  }
 }
 
 /**
@@ -97,7 +125,7 @@ uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
  */
 void scd4x_interface_delay_ms(uint32_t ms)
 {
-
+  HAL_Delay(ms);
 }
 
 /**
@@ -107,5 +135,5 @@ void scd4x_interface_delay_ms(uint32_t ms)
  */
 void scd4x_interface_debug_print(const char *const fmt, ...)
 {
-    
+    // not implemented
 }
