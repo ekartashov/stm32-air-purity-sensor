@@ -9,6 +9,7 @@
 
 #include "oled_graph.h"
 #include "ssd1306.h"
+#include <math.h>
 
 /**
  * @brief Ring buffers for 4 different sensor data streams

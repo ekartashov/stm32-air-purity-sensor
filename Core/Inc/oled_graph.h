@@ -211,6 +211,20 @@ void graph_plots_2t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
                      uint8_t margin);
 
+/**
+ * @brief Visualize screen edges and vertices for debugging
+ *
+ * This function provides a visual debugging aid that cycles through different
+ * screen visualization modes:
+ * 1. Black screen (no drawing)
+ * 2. Four corner dots only
+ * 3. Rectangle outline around screen
+ * 4. Black screen (everything cleared)
+ *
+ * The visualization cycles through these modes with a blinking effect.
+ */
+void debug_screen_edges(void);
+
 
 #ifdef __cplusplus
 }
