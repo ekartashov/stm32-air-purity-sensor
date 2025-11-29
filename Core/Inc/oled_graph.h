@@ -25,7 +25,7 @@ extern "C" {
  * Defines the size of the ring buffers used for storing sensor data.
  * This value determines how many historical data points are stored for each graph.
  */
-#define GRAPH_BUFFER_SIZE SSD1306_WIDTH 
+#define GRAPH_BUFFER_SIZE SSD1306_WIDTH
 
 /**
  * @brief Ring buffer structure for sensor data storage
@@ -80,10 +80,11 @@ float ring_buffer_get(ring_buffer_t* buffer, uint16_t index);
  * @param dot_size Size of data point markers in pixels
  * @param min_y Minimum Y value for scaling (0.0f to use automatic scaling)
  * @param max_y Maximum Y value for scaling (0.0f to use automatic scaling)
+ * @param legend_text Text to display as legend (NULL for no legend)
  */
 void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
                 uint8_t graph_width, uint8_t graph_height,
-                uint8_t dot_size, float min_y, float max_y);
+                uint8_t dot_size, float min_y, float max_y, const char* legend_text);
 
 /**
  * @brief Plot two graphs arranged vertically (1 top, 1 bottom)
@@ -97,10 +98,12 @@ void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the two graphs in pixels
+ * @param legend_text1 Text to display as legend for the top graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the bottom graph (NULL for no legend)
  */
 void graph_plots_1t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                       uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                      uint8_t margin);
+                      uint8_t margin, const char* legend_text1, const char* legend_text2);
 
 /**
  * @brief Plot two graphs arranged horizontally (1 left, 1 right)
@@ -114,10 +117,12 @@ void graph_plots_1t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the two graphs in pixels
+ * @param legend_text1 Text to display as legend for the left graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the right graph (NULL for no legend)
  */
 void graph_plots_1l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                       uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                      uint8_t margin);
+                      uint8_t margin, const char* legend_text1, const char* legend_text2);
 
 /**
  * @brief Plot three graphs arranged with one wide on top and two shallow on bottom
@@ -132,10 +137,13 @@ void graph_plots_1l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the graphs in pixels
+ * @param legend_text1 Text to display as legend for the top graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the first bottom graph (NULL for no legend)
+ * @param legend_text3 Text to display as legend for the second bottom graph (NULL for no legend)
  */
 void graph_plots_1t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin);
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3);
 
 /**
  * @brief Plot three graphs arranged with two shallow on top and one wide on bottom
@@ -150,10 +158,13 @@ void graph_plots_1t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the graphs in pixels
+ * @param legend_text1 Text to display as legend for the first top graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the second top graph (NULL for no legend)
+ * @param legend_text3 Text to display as legend for the bottom graph (NULL for no legend)
  */
 void graph_plots_2t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin);
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3);
 
 /**
  * @brief Plot three graphs arranged with one tall on left and two short on right
@@ -168,10 +179,13 @@ void graph_plots_2t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the graphs in pixels
+ * @param legend_text1 Text to display as legend for the left graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the first right graph (NULL for no legend)
+ * @param legend_text3 Text to display as legend for the second right graph (NULL for no legend)
  */
 void graph_plots_1l2r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin);
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3);
 
 /**
  * @brief Plot three graphs arranged with two short on left and one tall on right
@@ -186,10 +200,13 @@ void graph_plots_1l2r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the graphs in pixels
+ * @param legend_text1 Text to display as legend for the first left graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the second left graph (NULL for no legend)
+ * @param legend_text3 Text to display as legend for the right graph (NULL for no legend)
  */
 void graph_plots_2l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin);
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3);
 
 /**
  * @brief Plot four graphs arranged in a 2x2 grid
@@ -205,11 +222,15 @@ void graph_plots_2l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
  * @param graph_width Width of the graph area in pixels
  * @param graph_height Height of the graph area in pixels
  * @param margin Space between the graphs in pixels
+ * @param legend_text1 Text to display as legend for the top-left graph (NULL for no legend)
+ * @param legend_text2 Text to display as legend for the top-right graph (NULL for no legend)
+ * @param legend_text3 Text to display as legend for the bottom-left graph (NULL for no legend)
+ * @param legend_text4 Text to display as legend for the bottom-right graph (NULL for no legend)
  */
 void graph_plots_2t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                      ring_buffer_t* buffer3, ring_buffer_t* buffer4,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin);
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3, const char* legend_text4);
 
 /**
  * @brief Visualize screen edges and vertices for debugging

@@ -114,7 +114,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   int counter = 0;
-  int arrangement = 0;
+  int arrangement = 1;
   uint32_t start_time = HAL_GetTick();
 
   while (1)
@@ -151,31 +151,32 @@ int main(void)
         case 0:
             // 1 graph spanning full screen
             // Using the new API - we'll use graph_plot directly for this case
-            graph_plot(&sensor_ring_buffer_1, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 1, 0.0f, 100.0f);
+            graph_plot(&sensor_ring_buffer_1, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 1, 0.0f, 100.0f, "CO2");
             break;
         case 1:
-            // 2 graphs: Top-bottom (custom size)
-            graph_plots_1t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2);
+            // 2 graphs: Top-bottom
+            // Debug: Draw graph boundaries to visualize the issue
+            graph_plots_1t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC");
             break;
         case 2:
-            // 2 graphs: Left-right (custom size)
-            graph_plots_1l1r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2);
+            // 2 graphs: Left-right
+            graph_plots_1l1r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC");
             break;
         case 3:
             // 3 graphs: 1 wide on top, 2 shallow on bottom
-            graph_plots_1t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2);
+            graph_plots_1t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx");
             break;
         case 4:
             // 3 graphs: 2 shallow on top, 1 wide on bottom
-            graph_plots_2t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2);
+            graph_plots_2t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "PM");
             break;
         case 5:
             // 3 graphs: 1 tall on left, 2 short on right
-            graph_plots_1l2r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2);
+            graph_plots_1l2r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx");
             break;
         case 6:
             // 4 graphs: 2x2 grid (custom size)
-            graph_plots_2t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, &sensor_ring_buffer_4, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2);
+            graph_plots_2t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, &sensor_ring_buffer_4, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx", "PM");
             break;
     }
 

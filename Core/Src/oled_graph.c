@@ -10,6 +10,7 @@
 #include "oled_graph.h"
 #include "ssd1306.h"
 #include <math.h>
+#include <string.h>
 
 /**
  * @brief Ring buffers for 4 different sensor data streams
@@ -178,10 +179,11 @@ static void calculate_tick_positions(uint8_t graph_width, uint8_t graph_height,
  * @param dot_size Size of data point markers in pixels
  * @param min_y Minimum Y value for scaling (0.0f to use automatic scaling)
  * @param max_y Maximum Y value for scaling (0.0f to use automatic scaling)
+ * @param legend_text Text to display as legend (NULL for no legend)
  */
 void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
                 uint8_t graph_width, uint8_t graph_height,
-                uint8_t dot_size, float min_y, float max_y) {
+                uint8_t dot_size, float min_y, float max_y, const char* legend_text) {
     // Validate inputs
     if(!buffer || graph_width == 0 || graph_height == 0 || dot_size == 0) {
         return;
@@ -220,7 +222,6 @@ void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
                 ssd1306_Line(x_pos, graph_y + graph_height - 1,
                              x_pos, graph_y + graph_height - 1 - 2,
                              White);
-                // ssd1306_UpdateScreen();
             }
         }
     }
@@ -304,6 +305,62 @@ void graph_plot(ring_buffer_t* buffer, uint8_t graph_x, uint8_t graph_y,
                     ssd1306_DrawPixel(x + dx, y + dy, White);
                 }
             }
+        }
+    }
+
+    // Draw legend if provided
+    if(legend_text != NULL) {
+        // Calculate the position for the legend (top-left corner near the last Y tick)
+        // Position it near the first Y tick (which is at the top of the graph)
+        uint8_t legend_x = graph_x + 5;  // Small offset from the left edge
+        uint8_t legend_y = graph_y;      // No offset from the top edge
+
+        // Get font dimensions for calculating background size
+        uint8_t font_width = 6;  // Approximate width of a character
+        uint8_t font_height = 8; // Approximate height of a character
+
+        // Calculate background size based on text length
+        uint8_t text_length = strlen(legend_text);
+        uint8_t bg_width = text_length * font_width + 4;  // Add padding
+        uint8_t bg_height = font_height + 4;            // Add padding
+
+        // Draw white background rectangle for legend
+        // Ensure we draw the background rectangle with proper bounds checking
+        // Make sure the background doesn't extend beyond the graph area
+        uint8_t max_bg_width = graph_width - 4;  // Leave some margin from graph edges
+        uint8_t max_bg_height = graph_height - 4; // Leave some margin from graph edges
+
+        // Limit background size to stay within graph boundaries
+        if(bg_width > max_bg_width) {
+            bg_width = max_bg_width;
+        }
+        if(bg_height > max_bg_height) {
+            bg_height = max_bg_height;
+        }
+
+        // Ensure the background rectangle doesn't extend beyond the graph area
+        // This is the key fix - constrain the legend position to stay within the graph
+        uint8_t max_legend_x = graph_x + graph_width - bg_width;
+        uint8_t max_legend_y = graph_y + graph_height - bg_height;
+
+        // Constrain the legend position to stay within the graph area
+        if(legend_x > max_legend_x) {
+            legend_x = max_legend_x;
+        }
+        if(legend_y > max_legend_y) {
+            legend_y = max_legend_y;
+        }
+
+        // Draw black text on top of the white background
+        // Use precise positioning to match tick positioning approach
+        if ((legend_x + 2) < SSD1306_WIDTH && (legend_y + 2) < SSD1306_HEIGHT) {
+            ssd1306_SetCursor(legend_x + 2, legend_y + 2);
+            ssd1306_WriteString((char*)legend_text, Font_6x8, Black);
+        }
+
+        // Add corners to visually exttend background fill
+        if ((legend_x + bg_width) <= SSD1306_WIDTH && (legend_y + bg_height) <= SSD1306_HEIGHT) {
+            ssd1306_DrawRectangle(legend_x, legend_y, legend_x + bg_width - 1, legend_y + bg_height - 1, White);
         }
     }
 }
@@ -735,7 +792,7 @@ void calculate_positions_2t2b(uint8_t total_width, uint8_t total_height, uint8_t
 // Function to plot 2 graphs: one wide on top, one wide on bottom
 void graph_plots_1t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                       uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                      uint8_t margin) {
+                      uint8_t margin, const char* legend_text1, const char* legend_text2) {
     uint8_t top_x, top_y, top_width, top_height;
     uint8_t bottom_x, bottom_y, bottom_width, bottom_height;
 
@@ -743,14 +800,14 @@ void graph_plots_1t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                             &top_x, &top_y, &top_width, &top_height,
                             &bottom_x, &bottom_y, &bottom_width, &bottom_height);
 
-    graph_plot(buffer1, graph_x + top_x, graph_y + top_y, top_width, top_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + bottom_x, graph_y + bottom_y, bottom_width, bottom_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + top_x, graph_y + top_y, top_width, top_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + bottom_x, graph_y + bottom_y, bottom_width, bottom_height, 1, 0.0f, 100.0f, legend_text2);
 }
 
 // Function to plot 2 graphs: one tall on left, one tall on right
 void graph_plots_1l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                       uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                      uint8_t margin) {
+                      uint8_t margin, const char* legend_text1, const char* legend_text2) {
     uint8_t left_x, left_y, left_width, left_height;
     uint8_t right_x, right_y, right_width, right_height;
 
@@ -758,14 +815,14 @@ void graph_plots_1l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                             &left_x, &left_y, &left_width, &left_height,
                             &right_x, &right_y, &right_width, &right_height);
 
-    graph_plot(buffer1, graph_x + left_x, graph_y + left_y, left_width, left_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + right_x, graph_y + right_y, right_width, right_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + left_x, graph_y + left_y, left_width, left_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + right_x, graph_y + right_y, right_width, right_height, 1, 0.0f, 100.0f, legend_text2);
 }
 
 // Function to plot 3 graphs: 1 wide on top, 2 shallow on bottom
 void graph_plots_1t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin) {
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3) {
     uint8_t top_x, top_y, top_width, top_height;
     uint8_t bottom1_x, bottom1_y, bottom1_width, bottom1_height;
     uint8_t bottom2_x, bottom2_y, bottom2_width, bottom2_height;
@@ -775,15 +832,15 @@ void graph_plots_1t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
                             &bottom1_x, &bottom1_y, &bottom1_width, &bottom1_height,
                             &bottom2_x, &bottom2_y, &bottom2_width, &bottom2_height);
 
-    graph_plot(buffer1, graph_x + top_x, graph_y + top_y, top_width, top_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + bottom1_x, graph_y + bottom1_y, bottom1_width, bottom1_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer3, graph_x + bottom2_x, graph_y + bottom2_y, bottom2_width, bottom2_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + top_x, graph_y + top_y, top_width, top_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + bottom1_x, graph_y + bottom1_y, bottom1_width, bottom1_height, 1, 0.0f, 100.0f, legend_text2);
+    graph_plot(buffer3, graph_x + bottom2_x, graph_y + bottom2_y, bottom2_width, bottom2_height, 1, 0.0f, 100.0f, legend_text3);
 }
 
 // Function to plot 3 graphs: 2 shallow on top, 1 wide on bottom
 void graph_plots_2t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin) {
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3) {
     uint8_t top1_x, top1_y, top1_width, top1_height;
     uint8_t top2_x, top2_y, top2_width, top2_height;
     uint8_t bottom_x, bottom_y, bottom_width, bottom_height;
@@ -793,15 +850,15 @@ void graph_plots_2t1b(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
                             &top2_x, &top2_y, &top2_width, &top2_height,
                             &bottom_x, &bottom_y, &bottom_width, &bottom_height);
 
-    graph_plot(buffer1, graph_x + top1_x, graph_y + top1_y, top1_width, top1_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + top2_x, graph_y + top2_y, top2_width, top2_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer3, graph_x + bottom_x, graph_y + bottom_y, bottom_width, bottom_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + top1_x, graph_y + top1_y, top1_width, top1_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + top2_x, graph_y + top2_y, top2_width, top2_height, 1, 0.0f, 100.0f, legend_text2);
+    graph_plot(buffer3, graph_x + bottom_x, graph_y + bottom_y, bottom_width, bottom_height, 1, 0.0f, 100.0f, legend_text3);
 }
 
 // Function to plot 3 graphs: 1 tall on left, 2 short on right
 void graph_plots_1l2r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin) {
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3) {
     uint8_t left_x, left_y, left_width, left_height;
     uint8_t right1_x, right1_y, right1_width, right1_height;
     uint8_t right2_x, right2_y, right2_width, right2_height;
@@ -811,15 +868,15 @@ void graph_plots_1l2r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
                            &right1_x, &right1_y, &right1_width, &right1_height,
                            &right2_x, &right2_y, &right2_width, &right2_height);
 
-    graph_plot(buffer1, graph_x + left_x, graph_y + left_y, left_width, left_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + right1_x, graph_y + right1_y, right1_width, right1_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer3, graph_x + right2_x, graph_y + right2_y, right2_width, right2_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + left_x, graph_y + left_y, left_width, left_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + right1_x, graph_y + right1_y, right1_width, right1_height, 1, 0.0f, 100.0f, legend_text2);
+    graph_plot(buffer3, graph_x + right2_x, graph_y + right2_y, right2_width, right2_height, 1, 0.0f, 100.0f, legend_text3);
 }
 
 // Function to plot 3 graphs: 2 short on left, 1 tall on right
 void graph_plots_2l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffer_t* buffer3,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin) {
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3) {
     uint8_t left1_x, left1_y, left1_width, left1_height;
     uint8_t left2_x, left2_y, left2_width, left2_height;
     uint8_t right_x, right_y, right_width, right_height;
@@ -829,16 +886,16 @@ void graph_plots_2l1r(ring_buffer_t* buffer1, ring_buffer_t* buffer2, ring_buffe
                             &left2_x, &left2_y, &left2_width, &left2_height,
                             &right_x, &right_y, &right_width, &right_height);
 
-    graph_plot(buffer1, graph_x + left1_x, graph_y + left1_y, left1_width, left1_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + left2_x, graph_y + left2_y, left2_width, left2_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer3, graph_x + right_x, graph_y + right_y, right_width, right_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + left1_x, graph_y + left1_y, left1_width, left1_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + left2_x, graph_y + left2_y, left2_width, left2_height, 1, 0.0f, 100.0f, legend_text2);
+    graph_plot(buffer3, graph_x + right_x, graph_y + right_y, right_width, right_height, 1, 0.0f, 100.0f, legend_text3);
 }
 
 // Function to plot 4 graphs: 2 top, 2 bottom
 void graph_plots_2t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                      ring_buffer_t* buffer3, ring_buffer_t* buffer4,
                      uint8_t graph_x, uint8_t graph_y, uint8_t graph_width, uint8_t graph_height,
-                     uint8_t margin) {
+                     uint8_t margin, const char* legend_text1, const char* legend_text2, const char* legend_text3, const char* legend_text4) {
     uint8_t top1_x, top1_y, top1_width, top1_height;
     uint8_t top2_x, top2_y, top2_width, top2_height;
     uint8_t bottom1_x, bottom1_y, bottom1_width, bottom1_height;
@@ -850,10 +907,10 @@ void graph_plots_2t2b(ring_buffer_t* buffer1, ring_buffer_t* buffer2,
                             &bottom1_x, &bottom1_y, &bottom1_width, &bottom1_height,
                             &bottom2_x, &bottom2_y, &bottom2_width, &bottom2_height);
 
-    graph_plot(buffer1, graph_x + top1_x, graph_y + top1_y, top1_width, top1_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer2, graph_x + top2_x, graph_y + top2_y, top2_width, top2_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer3, graph_x + bottom1_x, graph_y + bottom1_y, bottom1_width, bottom1_height, 1, 0.0f, 100.0f);
-    graph_plot(buffer4, graph_x + bottom2_x, graph_y + bottom2_y, bottom2_width, bottom2_height, 1, 0.0f, 100.0f);
+    graph_plot(buffer1, graph_x + top1_x, graph_y + top1_y, top1_width, top1_height, 1, 0.0f, 100.0f, legend_text1);
+    graph_plot(buffer2, graph_x + top2_x, graph_y + top2_y, top2_width, top2_height, 1, 0.0f, 100.0f, legend_text2);
+    graph_plot(buffer3, graph_x + bottom1_x, graph_y + bottom1_y, bottom1_width, bottom1_height, 1, 0.0f, 100.0f, legend_text3);
+    graph_plot(buffer4, graph_x + bottom2_x, graph_y + bottom2_y, bottom2_width, bottom2_height, 1, 0.0f, 100.0f, legend_text4);
 }
 
 /**
@@ -943,7 +1000,7 @@ void debug_fullscreen_graph(void) {
     ssd1306_Fill(Black);
 
     // Plot a full-screen graph (using full display dimensions)
-    graph_plot(&sensor_ring_buffer_1, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 1, 0.0f, 100.0f);
+    graph_plot(&sensor_ring_buffer_1, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 1, 0.0f, 100.0f, NULL);
 
     // Draw debug visualization
     debug_screen_edges();
