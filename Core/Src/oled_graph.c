@@ -67,16 +67,17 @@ ring_buffer_t sensor_ring_buffer_4 = {
  * @param value Value to be added to the buffer
  */
 void ring_buffer_push(ring_buffer_t* buffer, float value) {
-    if(buffer->count < buffer->size) {
-        buffer->count++;
-    } else {
-        // If buffer is full, overwrite oldest value
-        buffer->head = (buffer->head + 1) % buffer->size;
-    }
-
     // Insert new value at head position
     buffer->data[buffer->head] = value;
-    // buffer->head = (buffer->head + 1) % buffer->size;
+
+    // If buffer is not yet full, increment count
+    if(buffer->count < buffer->size) {
+        buffer->count++;
+    }
+    // If buffer is full, we're overwriting the oldest element, so count stays the same
+
+    // Advance head to next position (with wraparound)
+    buffer->head = (buffer->head + 1) % buffer->size;
 }
 
 /**

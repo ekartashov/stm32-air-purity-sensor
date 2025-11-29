@@ -25,7 +25,7 @@ extern "C" {
  * Defines the size of the ring buffers used for storing sensor data.
  * This value determines how many historical data points are stored for each graph.
  */
-#define GRAPH_BUFFER_SIZE 128
+#define GRAPH_BUFFER_SIZE SSD1306_WIDTH 
 
 /**
  * @brief Ring buffer structure for sensor data storage
