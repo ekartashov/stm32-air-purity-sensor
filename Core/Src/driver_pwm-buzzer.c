@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "main.h"
-#include "stm32l4xx_hal.h"
 #include "driver_pwm-buzzer.h"
 
 extern TIM_HandleTypeDef htim2;
