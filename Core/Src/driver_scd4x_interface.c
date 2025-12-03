@@ -35,6 +35,11 @@
  */
 
 #include "driver_scd4x_interface.h"
+// #include "usb_device.h"
+#include "usbd_cdc_if.h"
+#include <stdarg.h>
+
+extern I2C_HandleTypeDef hi2c4;
 
 /**
  * @brief  interface iic bus init
@@ -44,8 +49,11 @@
  * @note   none
  */
 uint8_t scd4x_interface_iic_init(void)
-{
-    return 0;
+{ // chatgpt says this should not be called because we already call MX_I2C4_Init() in main.c
+  if(HAL_I2C_Init(&hi2c4) == HAL_OK) {
+      return 0;
+  }
+  return 1;
 }
 
 /**
@@ -57,7 +65,11 @@ uint8_t scd4x_interface_iic_init(void)
  */
 uint8_t scd4x_interface_iic_deinit(void)
 {
-    return 0;
+
+    if(HAL_I2C_DeInit(&hi2c4) == HAL_OK) {
+        return 0;
+    }
+    return 1;
 }
 
 /**
@@ -72,7 +84,10 @@ uint8_t scd4x_interface_iic_deinit(void)
  */
 uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
+  if(HAL_I2C_Master_Transmit(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
+  } 
+  return 1;
 }
 
 /**
@@ -82,12 +97,15 @@ uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
  * @param[in]  len length of the data buffer
  * @return     status code
  *             - 0 success
- *             - 1 read failed
+*             - 1 read failed
  * @note       none
  */
 uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
+  if(HAL_I2C_Master_Receive(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
+  } 
+  return 1;
 }
 
 /**
@@ -97,7 +115,7 @@ uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
  */
 void scd4x_interface_delay_ms(uint32_t ms)
 {
-
+  HAL_Delay(ms);
 }
 
 /**
@@ -107,5 +125,24 @@ void scd4x_interface_delay_ms(uint32_t ms)
  */
 void scd4x_interface_debug_print(const char *const fmt, ...)
 {
-    
+  char buf[256];
+
+  va_list args;
+  va_start(args, fmt);
+  // Leave space for the newline and null terminator by subtracting 2
+  int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args); 
+  va_end(args);
+
+  if (len < 0)
+  {
+      return;
+  }
+  
+  
+  buf[len] = '\r'; // Append the reset caddy
+  len++;           // Increase length to account for the newline
+  buf[len] = '\0'; // Keep it null-terminated
+
+  /* Send over USB CDC */
+  (void)CDC_Transmit_FS((uint8_t *)buf, (uint16_t)len);
 }

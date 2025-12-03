@@ -18,10 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "driver_pwm-buzzer.h"
+#include "driver_scd4x.h"
+#include "driver_scd4x_interface.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,6 +47,8 @@ I2C_HandleTypeDef hi2c4;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+static scd4x_handle_t scd4x_handle; // Initialized in SCD4x_Init()
+
 static const Buzzer_Note alert_melody[] = {
     { NOTE_C4, 166 },
     { NOTE_A4, 166 },
@@ -59,7 +64,7 @@ static void MX_GPIO_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -75,7 +80,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  static scd4x_handle_t scd4x_handle;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -98,16 +103,28 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C4_Init();
   MX_TIM2_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-
+  SCD4x_Init(&scd4x_handle);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    Buzzer_PlayMelody(alert_melody);
-    HAL_Delay(10000);
+    // Buzzer_PlayMelody(alert_melody);
+    uint16_t variant[3];
+    uint8_t res = scd4x_get_sensor_variant(&scd4x_handle, variant);
+    if (res == 0)
+    {
+        scd4x_interface_debug_print("SCD4x variant: %04X%04X%04X\r\n",
+                                    variant[0], variant[1], variant[2]);
+    }
+    else
+    {
+        scd4x_interface_debug_print("scd4x_get_variant failed: %u\r\n", res);
+    }
+    HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -134,8 +151,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
@@ -324,6 +342,36 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p)
+{
+    uint8_t res;
+
+    /* Link the interface functions */
+    DRIVER_SCD4X_LINK_INIT(scd4x_handle_p, scd4x_handle_t);
+    DRIVER_SCD4X_LINK_IIC_INIT(scd4x_handle_p, scd4x_interface_iic_init);
+    DRIVER_SCD4X_LINK_IIC_DEINIT(scd4x_handle_p, scd4x_interface_iic_deinit);
+    DRIVER_SCD4X_LINK_IIC_WRITE_COMMAND(scd4x_handle_p, scd4x_interface_iic_write_cmd);
+    DRIVER_SCD4X_LINK_IIC_READ_COMMAND(scd4x_handle_p, scd4x_interface_iic_read_cmd);
+    DRIVER_SCD4X_LINK_DELAY_MS(scd4x_handle_p, scd4x_interface_delay_ms);
+    DRIVER_SCD4X_LINK_DEBUG_PRINT(scd4x_handle_p, scd4x_interface_debug_print);
+
+
+    /* Tell the driver which chip you have */
+    res = scd4x_set_type(scd4x_handle_p, SCD41);
+    if (res != 0)
+    {
+        scd4x_interface_debug_print("scd4x_set_type failed: %u\r\n", res);
+        Error_Handler();
+    }
+
+    /* Initialize the chip (calls iic_init internally) */
+    res = scd4x_init(scd4x_handle_p);
+    if (res != 0)
+    {
+        scd4x_interface_debug_print("scd4x_init failed: %u\r\n", res);
+        Error_Handler();
+    }
+}
 
 /* USER CODE END 4 */
 

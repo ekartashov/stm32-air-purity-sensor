@@ -368,6 +368,20 @@ uint8_t scd4x_set_sensor_altitude(scd4x_handle_t *handle, uint16_t altitude);
 uint8_t scd4x_get_sensor_altitude(scd4x_handle_t *handle, uint16_t *altitude);
 
 /**
+ * @brief      get sensor variant
+ * @param[in]  *handle pointer to an scd4x handle structure
+ * @param[out] *sensor variant pointer to an altitude buffer
+ * @return     status code
+ *             - 0 success
+ *             - 1 get sensor altitude failed
+ *             - 2 handle is NULL
+ *             - 3 handle is not initialized
+ *             - 4 crc error
+ * @note       none
+ */
+uint8_t scd4x_get_sensor_variant(scd4x_handle_t *handle, uint16_t *variant);
+
+/**
  * @brief      convert the sensor altitude to the register raw data
  * @param[in]  *handle pointer to an scd4x handle structure
  * @param[in]  m set m
