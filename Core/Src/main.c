@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_gpio.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -26,6 +28,7 @@
 #include "driver_scd4x.h"
 #include "driver_scd4x_interface.h"
 #include "driver_scd4x_debug.h"
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +59,9 @@ static const Buzzer_Note alert_melody[] = {
     { 0,       100 },  // 0 = rest
     { 0xFFFF,  0 },    // terminator
 };
+
+static uint32_t last_led_update = 0;
+static uint8_t led_sequence_step = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,6 +71,7 @@ static void MX_I2C4_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p);
+static void run_debug_tests(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -106,15 +113,46 @@ int main(void)
   /* USER CODE BEGIN 2 */
   SCD4x_Init(&scd4x_handle);
   scd4x_run_full_test_once();
+
+  // Check for debug mode entry during startup (5 seconds window)
+  uint32_t startup_time = HAL_GetTick();
+  uint8_t in_debug_mode = 0;
+  while (HAL_GetTick() - startup_time < 1000)
+  {
+    if (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
+    {
+      // Button is pressed during startup window
+      uint32_t btn_press_start = HAL_GetTick();
+      while (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
+      {
+        if (HAL_GetTick() - btn_press_start >= 100)
+        {
+          in_debug_mode = 1;
+          break;
+        }
+        HAL_Delay(10); // Small delay to prevent tight loop
+      }
+      break;
+    }
+    HAL_Delay(100); // Check periodically
+  }
+
   /* USER CODE END 2 */
 
-  /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // Buzzer_PlayMelody(alert_melody);
-    scd4x_run_full_test_once();  // runs once, then becomes a no-op
-    HAL_Delay(1000);
+    if (in_debug_mode)
+    {
+      /* Enter debug mode - run debug tests continuously */
+      run_debug_tests();
+    }
+    else
+    {
+      // Normal operation
+      HAL_Delay(1000);
+      
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -376,6 +414,45 @@ static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p)
 }
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN 5 */
+static void run_debug_tests(void)
+{
+    // This function will run various debug tests for different components
+    // Currently, we'll just call the SCD4x test function as a placeholder
+    // In the future, this function can be expanded to include tests for other peripherals
+
+
+    // For now, we'll just add a simple debug print to indicate we're in debug mode
+    scd4x_interface_debug_print("DEBUG MODE: Running peripheral tests...\r\n");
+
+    // LED blinking sequence
+    Buzzer_PlayMelody(alert_melody);
+    for (int8_t ctr = 0; ctr < 3; ++ctr){
+      HAL_GPIO_WritePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin, GPIO_PIN_SET);
+      HAL_Delay(100);
+      HAL_GPIO_WritePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LED_MID_GPIO_Port, LED_MID_Pin, GPIO_PIN_SET);
+      HAL_Delay(100);
+      HAL_GPIO_WritePin(LED_MID_GPIO_Port, LED_MID_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_SET);
+      HAL_Delay(100);
+      HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_RESET);
+    }
+
+    // Call SCD4x debug test
+    scd4x_run_full_test_once();
+
+    // TODO: Add debug tests for other peripherals here
+    // For example:
+    // test_pwm_buzzer();
+    // test_adc_sensors();
+    // test_i2c_communication();
+    // etc.
+
+
+}
+/* USER CODE END 5 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
