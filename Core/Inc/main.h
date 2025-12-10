@@ -60,12 +60,21 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BTN_1_Pin GPIO_PIN_0
+#define BTN_1_GPIO_Port GPIOE
+#define BTN_1_EXTI_IRQn EXTI0_IRQn
 #define BUZZ_0_Pin GPIO_PIN_15
 #define BUZZ_0_GPIO_Port GPIOA
 #define LED_1_Pin GPIO_PIN_1
 #define LED_1_GPIO_Port GPIOE
 #define LED_2_Pin GPIO_PIN_0
 #define LED_2_GPIO_Port GPIOD
+#define LED_LOW_Pin GPIO_PIN_12
+#define LED_LOW_GPIO_Port GPIOG
+#define LED_MID_Pin GPIO_PIN_10
+#define LED_MID_GPIO_Port GPIOG
+#define LED_HIGH_Pin GPIO_PIN_9
+#define LED_HIGH_GPIO_Port GPIOG
 
 /* USER CODE BEGIN Private defines */
 
