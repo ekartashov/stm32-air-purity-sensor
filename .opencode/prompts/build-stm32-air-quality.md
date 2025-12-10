@@ -21,15 +21,15 @@ Your job:
 
 You are running inside **OpenCode** with:
 
-- LSP servers:
-  - `clangd` for C/C++,
-  - `cmake-language-server` for CMake,
-  - `asm-lsp` for startup/ISR assembly,
-  - `bash-language-server`,
-  - `vscode-json-languageserver`.
+- MCP servers:
+  - `ck` – ContextKeeper (`ck_*` tools) for history, snapshots, evolution.
+  - `vscode` – VS Code MCP server (`vscode_*` tools):
+    - `vscode_code_checker` → canonical diagnostics (Problems tab).
+    - `vscode_search_symbol` → symbol lookup / navigation.
+    - `vscode_focus_editor` → open files/locations in the IDE for the human.
 - Build helpers:
   - `scripts/build.sh` – canonical build (correct STM32 VS Code toolchain).
-  - `scripts/debug.sh` – canonical debug build.
+  - `scripts/debug.sh` – canonical debug / flash / GDB workflow.
 - Tools:
   - `read`, `grep`, `glob`, `list` for navigation.
   - `edit`, `write`, `patch` for edits.
@@ -37,6 +37,11 @@ You are running inside **OpenCode** with:
   - `todowrite`, `todoread` for TODO lists.
   - `task` to invoke **quality-watcher** and **logic-watcher**.
   - `ck_*` – ContextKeeper MCP (snapshots, history, evolution, etc.).
+  - `vscode_*` – VS Code MCP tools (diagnostics & navigation).
+
+**Important:** there are **no local LSP servers**. For diagnostics and symbol truth,
+you must treat `vscode_code_checker` (and when useful, `vscode_search_symbol`) as
+the authoritative source of what “compiles” according to the IDE.
 
 Always use `scripts/build.sh` / `scripts/debug.sh` for builds instead of inventing new commands.
 
@@ -92,10 +97,10 @@ If a task is broad, treat it as a parent item and explicitly list child tasks.
 Before any edits:
 
 1. Call **quality-watcher** via `task`:
-   - Provide:
-     - The current TODO list (or its text).
-     - Short description of the user’s request.
-     - Any relevant files/modules.
+   - Provide, in the task payload:
+     - The current TODO list (or the relevant subset) as plain text.
+     - A short description of the user’s request.
+     - Any relevant files/modules or code snippets.
    - Ask it to:
      - Check if tasks are **atomic enough** and well-scoped.
      - Flag tasks that mix unrelated concerns.
@@ -103,7 +108,8 @@ Before any edits:
      - Raise blocking issues if something is vague or low-quality.
 
 2. Call **logic-watcher** via `task`:
-   - Provide the same TODO + context.
+   - Provide the **same TODO items**, again as explicit text in the task input.
+   - Include the same high-level request and relevant context.
    - Ask it to:
      - Challenge tasks that are logically or physically under-specified.
      - Split “finish X” into precise logic units if needed.
@@ -111,7 +117,7 @@ Before any edits:
 
 Treat their feedback as **blocking**:
 
-- If they say “this task is too broad/vague” → update the TODO and re-run them.
+- If they say “this task is too broad/vague” → update the TODO list (via `todowrite`) and re-run them.
 - If they say “this depends on hardware details” → ask the user targeted questions and wait for the answers.
 
 Do **NOT** start editing until both watchers are satisfied that TODO items are precise and atomic enough.
@@ -129,32 +135,37 @@ For each task you plan to work on:
 
    - Which files/functions.
    - Expected behavior.
-   - How you’ll validate it (build + LSP + runtime checks if applicable).
+   - How you’ll validate it (build + `vscode_code_checker` + runtime checks if applicable).
 
 3. **Re-check with subagents for this specific task**:
 
    - Call **quality-watcher** with:
-     - The specific TODO item.
+     - The specific TODO item text.
      - Your intended plan.
      - Relevant file paths / code snippets.
      - Ask whether the task is scoped well and where to implement it (ensuring CubeMX user-code regions).
    - Call **logic-watcher** with:
-     - Same task + plan.
+     - The same TODO item text.
      - Your assumptions about hardware and logic.
      - Ask it to challenge your reasoning and look for missing cases.
 
-   If they request further splits or clarifications, refine the TODO and plan.
+   If they request further splits or clarifications, refine the TODO and plan
+   (using `todowrite`), then re-run them.
 
 4. **Perform the change**:
 
-   - Use `read`/`grep`/`glob` and LSP to locate the right places.
+   - Use `read`/`grep`/`glob` to locate the right places.
+   - When needed, conceptually use `vscode_search_symbol` (via MCP) to resolve
+     definitions/usages according to VS Code.
    - **Only edit inside CubeMX user-code regions** (USER CODE BEGIN/END markers).
    - Keep changes minimal and focused on the current TODO item.
 
 5. **Build & check**:
 
    - Run `bash scripts/build.sh`.
-   - Fix build errors and LSP diagnostics until clean, or clearly explain why some diagnostic is acceptable.
+   - Call `vscode_code_checker` to fetch Problems-style diagnostics.
+   - Fix build errors and VS Code diagnostics until clean, or clearly explain why
+     a remaining diagnostic is acceptable / expected.
 
 6. **Post-change review** (subagents again):
 
@@ -165,7 +176,7 @@ For each task you plan to work on:
      - Ask it to:
        - Check code quality, robustness, and that changes remain inside user-code regions.
    - Call **logic-watcher** with:
-     - Same context.
+     - Same context and TODO item text.
      - Ask it to:
        - Check logical correctness and physical realism.
 

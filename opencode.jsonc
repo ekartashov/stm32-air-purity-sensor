@@ -3,54 +3,28 @@
 
   // === MCP servers ===
   "mcp": {
+    // ContextKeeper (unchanged)
     "ck": {
       "type": "local",
       "enabled": true,
       "command": ["ck", "--serve"]
+    },
+
+    // VS Code MCP server (Problems tab, symbols, etc.) via mcp-proxy
+    "vscode": {
+      "type": "local",
+      "enabled": true,
+      // mcp-proxy bridges stdio <-> SSE
+      // If you change the port in VSCode settings (mcpServer.port),
+      // update the URL below accordingly.
+      "command": ["mcp-proxy", "http://127.0.0.1:6010/sse"]
     }
   },
 
   // === Language servers ===
-  "lsp": {
-    // Shell scripts
-    "bash": {
-      "command": ["npx", "--yes", "bash-language-server", "start"],
-      "extensions": [".sh", ".bash"]
-    },
-
-    // JSON / JSONC configs
-    "json": {
-      "command": ["npx", "--yes", "vscode-json-languageserver", "--stdio"],
-      "extensions": [".json", ".jsonc"]
-    },
-
-    // Core C / C++ for STM32 firmware
-    "clangd": {
-      "command": [
-        "clangd",
-        "--background-index",
-        "--clang-tidy",
-        "--completion-style=detailed"
-      ],
-      "extensions": [
-        ".c", ".h",
-        ".cpp", ".cc", ".cxx",
-        ".hpp", ".hh", ".hxx"
-      ]
-    },
-
-    // CMake support
-    "cmake": {
-      "command": ["cmake-language-server"],
-      "extensions": [".cmake"]
-    },
-
-    // Assembly (startup, ISRs, etc.)
-    "asm": {
-      "command": ["asm-lsp"],
-      "extensions": [".s", ".S", ".asm"]
-    }
-  },
+  // We intentionally disable all local LSP servers and rely solely
+  // on VS Code via the vscode MCP server (code_checker, search_symbol, etc.).
+  "lsp": false,
 
   // === Agents ===
   "agent": {
@@ -73,7 +47,10 @@
         "todoread": true,
 
         // ContextKeeper MCP server tools
-        "ck_*": true
+        "ck_*": true,
+
+        // VSCode MCP server tools (e.g. vscode_code_checker, vscode_search_symbol)
+        "vscode_*": true
       }
     },
 
@@ -92,7 +69,10 @@
         "task": true,
 
         // ContextKeeper MCP server tools
-        "ck_*": true
+        "ck_*": true,
+
+        // VSCode MCP server tools for diagnostics / symbols
+        "vscode_*": true
       }
     },
 
@@ -107,11 +87,11 @@
         "edit": false,
         "bash": false,
 
-        // Can read the TODO list
-        "todoread": true,
+        // ContextKeeper MCP server tools
+        "ck_*": true,
 
-        // Can inspect history via ContextKeeper MCP
-        "ck_*": true
+        // VSCode MCP server tools (primarily vscode_code_checker)
+        "vscode_*": true
       }
     },
 
@@ -126,11 +106,11 @@
         "edit": false,
         "bash": false,
 
-        // Can read the TODO list
-        "todoread": true,
+        // ContextKeeper MCP server tools
+        "ck_*": true,
 
-        // Can inspect history via ContextKeeper MCP
-        "ck_*": true
+        // VSCode MCP server tools
+        "vscode_*": true
       }
     }
   }
