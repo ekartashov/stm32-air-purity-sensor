@@ -1,0 +1,137 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // === MCP servers ===
+  "mcp": {
+    "ck": {
+      "type": "local",
+      "enabled": true,
+      "command": ["ck", "--serve"]
+    }
+  },
+
+  // === Language servers ===
+  "lsp": {
+    // Shell scripts
+    "bash": {
+      "command": ["npx", "--yes", "bash-language-server", "start"],
+      "extensions": [".sh", ".bash"]
+    },
+
+    // JSON / JSONC configs
+    "json": {
+      "command": ["npx", "--yes", "vscode-json-languageserver", "--stdio"],
+      "extensions": [".json", ".jsonc"]
+    },
+
+    // Core C / C++ for STM32 firmware
+    "clangd": {
+      "command": [
+        "clangd",
+        "--background-index",
+        "--clang-tidy",
+        "--completion-style=detailed"
+      ],
+      "extensions": [
+        ".c", ".h",
+        ".cpp", ".cc", ".cxx",
+        ".hpp", ".hh", ".hxx"
+      ]
+    },
+
+    // CMake support
+    "cmake": {
+      "command": ["cmake-language-server"],
+      "extensions": [".cmake"]
+    },
+
+    // Assembly (startup, ISRs, etc.)
+    "asm": {
+      "command": ["asm-lsp"],
+      "extensions": [".s", ".S", ".asm"]
+    }
+  },
+
+  // === Agents ===
+  "agent": {
+    // Main implementation agent
+    "build": {
+      "description": "Primary STM32 firmware implementation agent for the air-purity sensor project. Uses TODO-first workflow and subagents for every non-trivial decision.",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/prompts/build-stm32-air-quality.md}",
+      "tools": {
+        // Can modify code and run builds
+        "write": true,
+        "edit": true,
+        "bash": true,
+
+        // Can orchestrate subagents
+        "task": true,
+
+        // TODO management
+        "todowrite": true,
+        "todoread": true,
+
+        // ContextKeeper MCP server tools
+        "ck_*": true
+      }
+    },
+
+    // Planning / analysis agent (read-only, no edits)
+    "plan": {
+      "description": "Read-only STM32 planning/analysis agent that designs changes and reviews code without editing. Produces atomic-commit-sized plans.",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/prompts/plan-stm32-air-quality.md}",
+      "temperature": 0.1,
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false,
+
+        // Can call subagents if it wants second opinions
+        "task": true,
+
+        // ContextKeeper MCP server tools
+        "ck_*": true
+      }
+    },
+
+    // Subagent: code quality, CubeMX boundaries, best practices
+    "quality-watcher": {
+      "description": "Subagent that reviews STM32 firmware for code quality, robustness, CubeMX user-code boundaries, and best practices. Acts as a showstopper for low-quality or vague work.",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agent/quality-watcher.md}",
+      "tools": {
+        // Read-only reviewer – no edits, no shell
+        "write": false,
+        "edit": false,
+        "bash": false,
+
+        // Can read the TODO list
+        "todoread": true,
+
+        // Can inspect history via ContextKeeper MCP
+        "ck_*": true
+      }
+    },
+
+    // Subagent: logical correctness, invariants, real-world behavior
+    "logic-watcher": {
+      "description": "Subagent that checks logical correctness, assumptions, invariants, and real-world behavior of the STM32 air-quality logic. Acts as a showstopper for hand-wavy or physically unrealistic logic.",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agent/logic-watcher.md}",
+      "tools": {
+        // Read-only reviewer – no edits, no shell
+        "write": false,
+        "edit": false,
+        "bash": false,
+
+        // Can read the TODO list
+        "todoread": true,
+
+        // Can inspect history via ContextKeeper MCP
+        "ck_*": true
+      }
+    }
+  }
+}
