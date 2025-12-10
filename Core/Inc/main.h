@@ -46,7 +46,8 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+#define SENSORS_HI2C hi2c4
+#define BUZZER_TIM htim2
 /* USER CODE END EM */
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
@@ -67,7 +68,6 @@ void Error_Handler(void);
 #define LED_2_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
-#define hi2c_scd41 hi2c4
 
 /* USER CODE END Private defines */
 

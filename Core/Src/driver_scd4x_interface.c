@@ -35,11 +35,10 @@
  */
 
 #include "driver_scd4x_interface.h"
-// #include "usb_device.h"
 #include "usbd_cdc_if.h"
 #include <stdarg.h>
 
-extern I2C_HandleTypeDef hi2c4;
+extern I2C_HandleTypeDef SENSORS_HI2C;
 
 /**
  * @brief  interface iic bus init
@@ -48,12 +47,9 @@ extern I2C_HandleTypeDef hi2c4;
  *         - 1 iic init failed
  * @note   none
  */
-uint8_t scd4x_interface_iic_init(void)
-{ // chatgpt says this should not be called because we already call MX_I2C4_Init() in main.c
-  if(HAL_I2C_Init(&hi2c4) == HAL_OK) {
-      return 0;
-  }
-  return 1;
+uint8_t scd4x_interface_iic_init(void) {
+    /* I2C already initialized by MX_I2C4_Init() in main.c */
+    return 0;
 }
 
 /**
@@ -63,14 +59,11 @@ uint8_t scd4x_interface_iic_init(void)
  *         - 1 iic deinit failed
  * @note   none
  */
-uint8_t scd4x_interface_iic_deinit(void)
-{
-
-    if(HAL_I2C_DeInit(&hi2c4) == HAL_OK) {
-        return 0;
-    }
-    return 1;
+uint8_t scd4x_interface_iic_deinit(void) {
+    /* Keep I2C running; main app owns the peripheral */
+    return 0;
 }
+
 
 /**
  * @brief     interface iic bus write command
@@ -84,7 +77,7 @@ uint8_t scd4x_interface_iic_deinit(void)
  */
 uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
-  if(HAL_I2C_Master_Transmit(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
+  if(HAL_I2C_Master_Transmit(&SENSORS_HI2C, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
   }
   return 1;
@@ -102,7 +95,7 @@ uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
  */
 uint8_t scd4x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
-  if(HAL_I2C_Master_Receive(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
+  if(HAL_I2C_Master_Receive(&SENSORS_HI2C, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
   } 
   return 1;

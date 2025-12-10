@@ -1571,29 +1571,29 @@ uint8_t scd4x_wake_up(scd4x_handle_t *handle)
     uint8_t res;
 
     res = scd4x_check_handle(handle);
-    if (res != 0) {
-        return res;
-    }
+    if (res != 0) return res;
 
     res = scd4x_check_initialized(handle);
-    if (res != 0) {
-        return res;
-    }
+    if (res != 0) return res;
 
-    if (handle->type == SCD40)                                                          /* check type */
-    {
+    if (handle->type == SCD40) {
         scd4x_handle_error(handle, "only scd41 and scd43 has this function", 4);
-        return 4;                                                                       /* return error */
+        return 4;
     }
 
-    res = scd4x_handle_iic_operation(handle, a_scd4x_iic_write, SCD4X_COMMAND_WAKE_UP,
-                                    "wake up failed", 1);
-    if (res != 0) {
-        return res;
+    // Retry a few times, as wake-up can NACK sporadically
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        res = scd4x_handle_iic_operation(handle, a_scd4x_iic_write,
+                                         SCD4X_COMMAND_WAKE_UP,
+                                         "wake up failed", 1);
+        if (res == 0) {
+            handle->delay_ms(30);
+            return 0;
+        }
+        handle->delay_ms(5); // short pause before retry
     }
-    handle->delay_ms(30);                                                               /* delay 30ms */
 
-    return 0;                                                                           /* success return 0 */
+    return res;  // last error
 }
 
 /**

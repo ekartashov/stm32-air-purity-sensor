@@ -47,6 +47,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/driver_pwm-buzzer.c
     Core/Src/driver_scd4x.c
     Core/Src/driver_scd4x_interface.c
+    Core/Src/driver_scd4x_debug.c
 )
 
 # Add include paths

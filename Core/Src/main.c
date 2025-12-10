@@ -25,6 +25,7 @@
 #include "driver_pwm-buzzer.h"
 #include "driver_scd4x.h"
 #include "driver_scd4x_interface.h"
+#include "driver_scd4x_debug.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +34,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -105,6 +105,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   SCD4x_Init(&scd4x_handle);
+  scd4x_run_full_test_once();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -112,17 +113,7 @@ int main(void)
   while (1)
   {
     // Buzzer_PlayMelody(alert_melody);
-    uint16_t variant[3];
-    uint8_t res = scd4x_get_sensor_variant(&scd4x_handle, variant);
-    if (res == 0)
-    {
-        scd4x_interface_debug_print("SCD4x variant: %04X%04X%04X\r\n",
-                                    variant[0], variant[1], variant[2]);
-    }
-    else
-    {
-        scd4x_interface_debug_print("scd4x_get_variant failed: %u\r\n", res);
-    }
+    scd4x_run_full_test_once();  // runs once, then becomes a no-op
     HAL_Delay(1000);
     /* USER CODE END WHILE */
 
