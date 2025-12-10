@@ -86,7 +86,7 @@ uint8_t scd4x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
   if(HAL_I2C_Master_Transmit(&hi2c4, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
-  } 
+  }
   return 1;
 }
 

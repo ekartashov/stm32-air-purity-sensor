@@ -54,29 +54,22 @@ static uint8_t a_scd4x_iic_write(scd4x_handle_t *handle, uint16_t reg, uint8_t *
  * @param count Number of bytes to process
  * @return CRC8 value
  */
-static uint8_t a_scd4x_generate_crc(uint8_t* data, uint8_t count)
-{
+static uint8_t a_scd4x_generate_crc(uint8_t *data, uint8_t count) {
     uint8_t current_byte;
     uint8_t crc = SCD4X_CRC8_INIT;
     uint8_t crc_bit;
 
-    for (current_byte = 0; current_byte < count; ++current_byte)        /* calculate crc */
-    {
-        crc ^= (data[current_byte]);                                    /* xor data */
-        for (crc_bit = 8; crc_bit > 0; --crc_bit)                       /* 8 bit */
-        {
-            if ((crc & 0x80) != 0)                                      /* if 7th bit is 1 */
-            {
-                crc = (crc << 1) ^ SCD4X_CRC8_POLYNOMIAL;               /* xor */
-            }
-            else
-            {
-                crc = crc << 1;                                         /* left shift 1 */
+    for (current_byte = 0; current_byte < count; ++current_byte) {
+        crc ^= data[current_byte];
+        for (crc_bit = 0; crc_bit < 8; crc_bit++) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ SCD4X_CRC8_POLYNOMIAL;
+            } else {
+                crc <<= 1;
             }
         }
     }
-
-    return crc;                                                         /* return crc */
+    return crc;
 }
 
 /**
@@ -127,7 +120,11 @@ static uint8_t scd4x_handle_iic_operation_with_params(scd4x_handle_t *handle, ui
 }
 
 static uint8_t scd4x_check_crc(uint8_t *buf, uint8_t data_len, const char *error_msg, uint8_t error_code) {
-    if (buf[data_len + 2] != a_scd4x_generate_crc(&buf[data_len], 2)) {
+    // compute CRC over the `data_len` data bytes starting at buf[0]
+    uint8_t crc = a_scd4x_generate_crc(buf, data_len);
+
+    // CRC byte is immediately after the data bytes
+    if (buf[data_len] != crc) {
         scd4x_handle_error(0, error_msg, error_code);
         return error_code;
     }
@@ -157,7 +154,7 @@ static uint8_t scd4x_check_data_ready(uint16_t prev, const char *error_msg, uint
 /**
  * @brief chip address definition
  */
-#define SCD4X_ADDRESS             (0x62 << 1)              /**< chip iic address */
+#define SCD4X_ADDRESS             (0x62)              /**< chip iic address */
 
 /**
  * @brief chip command definition

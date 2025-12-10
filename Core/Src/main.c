@@ -80,7 +80,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  static scd4x_handle_t scd4x_handle;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -198,7 +197,7 @@ static void MX_I2C4_Init(void)
 
   /* USER CODE END I2C4_Init 1 */
   hi2c4.Instance = I2C4;
-  hi2c4.Init.Timing = 0x30A175AB;
+  hi2c4.Init.Timing = 0x4081D7FF;
   hi2c4.Init.OwnAddress1 = 0;
   hi2c4.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c4.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
