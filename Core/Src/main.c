@@ -82,6 +82,7 @@ static void MX_TIM2_Init(void);
 static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p);
 static void SEN5X_Init(sen5x_handle_t *sen5x_handle_p);
 static void run_debug_tests(void);
+static void ssd1306_DisplayDebugMode(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -191,19 +192,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   if (in_debug_mode) 
   {
-    // Debug Screen 
-    char debug_screen_msg[] = "DEBUG MODE";
-    uint8_t debug_screen_msg_x = (uint8_t)((SSD1306_WIDTH - (strlen(debug_screen_msg)) * 11) / 2);
-    uint8_t debug_screen_msg_y = (uint8_t)((SSD1306_HEIGHT - 18) / 2);
-    ssd1306_SetCursor(debug_screen_msg_x, debug_screen_msg_y);
-    ssd1306_Fill(Black);
-    ssd1306_WriteString(debug_screen_msg, Font_11x18, White);
-    ssd1306_UpdateScreen();
-
-    // Serial
+    ssd1306_DisplayDebugMode();
     serial_print("DEBUG MODE: Running peripheral tests...\r\n");
     while (1) {
       run_debug_tests();
+      ssd1306_DisplayDebugMode();
       HAL_Delay(1000);
     }
   }
@@ -588,8 +581,17 @@ static void run_debug_tests(void)
     scd4x_run_full_test_once();
 
     // Call SSD1305 debug test
-    // ssd1306_TestAll();
+    ssd1306_TestAll();
+}
 
+void ssd1306_DisplayDebugMode(void) {
+    char debug_screen_msg[] = "DEBUG MODE";
+    uint8_t debug_screen_msg_x = (uint8_t)((SSD1306_WIDTH - (strlen(debug_screen_msg)) * 11) / 2);
+    uint8_t debug_screen_msg_y = (uint8_t)((SSD1306_HEIGHT - 18) / 2);
+    ssd1306_SetCursor(debug_screen_msg_x, debug_screen_msg_y);
+    ssd1306_Fill(Black);
+    ssd1306_WriteString(debug_screen_msg, Font_11x18, White);
+    ssd1306_UpdateScreen();
 }
 /* USER CODE END 5 */
 
