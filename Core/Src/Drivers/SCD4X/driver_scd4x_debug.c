@@ -32,10 +32,10 @@ void scd4x_run_full_test_once(void)
     float    t_degC   = 0.0f;
     float    rh_pct   = 0.0f;
 
-    uint16_t offset_reg, altitude_reg, pressure_reg;
+    // uint16_t offset_reg, altitude_reg, pressure_reg;
     uint16_t variant;
     uint16_t serial[3];
-    scd4x_bool_t asc_enable;
+    // scd4x_bool_t asc_enable;
     scd4x_bool_t malfunction;
 
     uint8_t raw_buf[3] = {0};
