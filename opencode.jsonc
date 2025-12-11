@@ -1,0 +1,117 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // === MCP servers ===
+  "mcp": {
+    // ContextKeeper (unchanged)
+    "ck": {
+      "type": "local",
+      "enabled": true,
+      "command": ["ck", "--serve"]
+    },
+
+    // VS Code MCP server (Problems tab, symbols, etc.) via mcp-proxy
+    "vscode": {
+      "type": "local",
+      "enabled": true,
+      // mcp-proxy bridges stdio <-> SSE
+      // If you change the port in VSCode settings (mcpServer.port),
+      // update the URL below accordingly.
+      "command": ["mcp-proxy", "http://127.0.0.1:6010/sse"]
+    }
+  },
+
+  // === Language servers ===
+  // We intentionally disable all local LSP servers and rely solely
+  // on VS Code via the vscode MCP server (code_checker, search_symbol, etc.).
+  "lsp": false,
+
+  // === Agents ===
+  "agent": {
+    // Main implementation agent
+    "build": {
+      "description": "Primary STM32 firmware implementation agent for the air-purity sensor project. Uses TODO-first workflow and subagents for every non-trivial decision.",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/prompts/build-stm32-air-quality.md}",
+      "tools": {
+        // Can modify code and run builds
+        "write": true,
+        "edit": true,
+        "bash": true,
+
+        // Can orchestrate subagents
+        "task": true,
+
+        // TODO management
+        "todowrite": true,
+        "todoread": true,
+
+        // ContextKeeper MCP server tools
+        "ck_*": true,
+
+        // VSCode MCP server tools (e.g. vscode_code_checker, vscode_search_symbol)
+        "vscode_*": true
+      }
+    },
+
+    // Planning / analysis agent (read-only, no edits)
+    "plan": {
+      "description": "Read-only STM32 planning/analysis agent that designs changes and reviews code without editing. Produces atomic-commit-sized plans.",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/prompts/plan-stm32-air-quality.md}",
+      "temperature": 0.1,
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false,
+
+        // Can call subagents if it wants second opinions
+        "task": true,
+
+        // ContextKeeper MCP server tools
+        "ck_*": true,
+
+        // VSCode MCP server tools for diagnostics / symbols
+        "vscode_*": true
+      }
+    },
+
+    // Subagent: code quality, CubeMX boundaries, best practices
+    "quality-watcher": {
+      "description": "Subagent that reviews STM32 firmware for code quality, robustness, CubeMX user-code boundaries, and best practices. Acts as a showstopper for low-quality or vague work.",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agent/quality-watcher.md}",
+      "tools": {
+        // Read-only reviewer – no edits, no shell
+        "write": false,
+        "edit": false,
+        "bash": false,
+
+        // ContextKeeper MCP server tools
+        "ck_*": true,
+
+        // VSCode MCP server tools (primarily vscode_code_checker)
+        "vscode_*": true
+      }
+    },
+
+    // Subagent: logical correctness, invariants, real-world behavior
+    "logic-watcher": {
+      "description": "Subagent that checks logical correctness, assumptions, invariants, and real-world behavior of the STM32 air-quality logic. Acts as a showstopper for hand-wavy or physically unrealistic logic.",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/agent/logic-watcher.md}",
+      "tools": {
+        // Read-only reviewer – no edits, no shell
+        "write": false,
+        "edit": false,
+        "bash": false,
+
+        // ContextKeeper MCP server tools
+        "ck_*": true,
+
+        // VSCode MCP server tools
+        "vscode_*": true
+      }
+    }
+  }
+}

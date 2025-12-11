@@ -18,10 +18,17 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_gpio.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "driver_pwm-buzzer.h"
+#include "driver_scd4x.h"
+#include "driver_scd4x_interface.h"
+#include "driver_scd4x_debug.h"
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -30,7 +37,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,6 +50,8 @@ I2C_HandleTypeDef hi2c4;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+static scd4x_handle_t scd4x_handle; // Initialized in SCD4x_Init()
+
 static const Buzzer_Note alert_melody[] = {
     { NOTE_C4, 166 },
     { NOTE_A4, 166 },
@@ -51,6 +59,9 @@ static const Buzzer_Note alert_melody[] = {
     { 0,       100 },  // 0 = rest
     { 0xFFFF,  0 },    // terminator
 };
+
+static uint32_t last_led_update = 0;
+static uint8_t led_sequence_step = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,7 +70,8 @@ static void MX_GPIO_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p);
+static void run_debug_tests(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -75,7 +87,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -98,16 +109,50 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C4_Init();
   MX_TIM2_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+  SCD4x_Init(&scd4x_handle);
+  scd4x_run_full_test_once();
+
+  // Check for debug mode entry during startup (5 seconds window)
+  uint32_t startup_time = HAL_GetTick();
+  uint8_t in_debug_mode = 0;
+  while (HAL_GetTick() - startup_time < 1000)
+  {
+    if (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
+    {
+      // Button is pressed during startup window
+      uint32_t btn_press_start = HAL_GetTick();
+      while (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
+      {
+        if (HAL_GetTick() - btn_press_start >= 100)
+        {
+          in_debug_mode = 1;
+          break;
+        }
+        HAL_Delay(10); // Small delay to prevent tight loop
+      }
+      break;
+    }
+    HAL_Delay(100); // Check periodically
+  }
 
   /* USER CODE END 2 */
 
-  /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    Buzzer_PlayMelody(alert_melody);
-    HAL_Delay(10000);
+    if (in_debug_mode)
+    {
+      /* Enter debug mode - run debug tests continuously */
+      run_debug_tests();
+    }
+    else
+    {
+      // Normal operation
+      HAL_Delay(1000);
+      
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -134,8 +179,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
@@ -287,6 +333,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
+  HAL_PWREx_EnableVddIO2();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
@@ -294,11 +342,14 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PE0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOG, LED_LOW_Pin|LED_MID_Pin|LED_HIGH_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : BTN_1_Pin */
+  GPIO_InitStruct.Pin = BTN_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  HAL_GPIO_Init(BTN_1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED_1_Pin */
   GPIO_InitStruct.Pin = LED_1_Pin;
@@ -314,6 +365,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : LED_LOW_Pin LED_MID_Pin LED_HIGH_Pin */
+  GPIO_InitStruct.Pin = LED_LOW_Pin|LED_MID_Pin|LED_HIGH_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -324,8 +382,77 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p)
+{
+    uint8_t res;
+
+    /* Link the interface functions */
+    DRIVER_SCD4X_LINK_INIT(scd4x_handle_p, scd4x_handle_t);
+    DRIVER_SCD4X_LINK_IIC_INIT(scd4x_handle_p, scd4x_interface_iic_init);
+    DRIVER_SCD4X_LINK_IIC_DEINIT(scd4x_handle_p, scd4x_interface_iic_deinit);
+    DRIVER_SCD4X_LINK_IIC_WRITE_COMMAND(scd4x_handle_p, scd4x_interface_iic_write_cmd);
+    DRIVER_SCD4X_LINK_IIC_READ_COMMAND(scd4x_handle_p, scd4x_interface_iic_read_cmd);
+    DRIVER_SCD4X_LINK_DELAY_MS(scd4x_handle_p, scd4x_interface_delay_ms);
+    DRIVER_SCD4X_LINK_DEBUG_PRINT(scd4x_handle_p, scd4x_interface_debug_print);
+
+
+    /* Tell the driver which chip you have */
+    res = scd4x_set_type(scd4x_handle_p, SCD41);
+    if (res != 0)
+    {
+        scd4x_interface_debug_print("scd4x_set_type failed: %u\r\n", res);
+        Error_Handler();
+    }
+
+    /* Initialize the chip (calls iic_init internally) */
+    res = scd4x_init(scd4x_handle_p);
+    if (res != 0)
+    {
+        scd4x_interface_debug_print("scd4x_init failed: %u\r\n", res);
+        Error_Handler();
+    }
+}
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN 5 */
+static void run_debug_tests(void)
+{
+    // This function will run various debug tests for different components
+    // Currently, we'll just call the SCD4x test function as a placeholder
+    // In the future, this function can be expanded to include tests for other peripherals
+
+
+    // For now, we'll just add a simple debug print to indicate we're in debug mode
+    scd4x_interface_debug_print("DEBUG MODE: Running peripheral tests...\r\n");
+
+    // LED blinking sequence
+    Buzzer_PlayMelody(alert_melody);
+    for (int8_t ctr = 0; ctr < 3; ++ctr){
+      HAL_GPIO_WritePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin, GPIO_PIN_SET);
+      HAL_Delay(100);
+      HAL_GPIO_WritePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LED_MID_GPIO_Port, LED_MID_Pin, GPIO_PIN_SET);
+      HAL_Delay(100);
+      HAL_GPIO_WritePin(LED_MID_GPIO_Port, LED_MID_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_SET);
+      HAL_Delay(100);
+      HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_RESET);
+    }
+
+    // Call SCD4x debug test
+    scd4x_run_full_test_once();
+
+    // TODO: Add debug tests for other peripherals here
+    // For example:
+    // test_pwm_buzzer();
+    // test_adc_sensors();
+    // test_i2c_communication();
+    // etc.
+
+
+}
+/* USER CODE END 5 */
 
 /**
   * @brief  This function is executed in case of error occurrence.

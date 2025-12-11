@@ -8,7 +8,6 @@
 
 #include <stdint.h>
 #include "main.h"
-#include "driver_pwm-buzzer_interface.h"
 #include "driver_pwm-buzzer.h"
 
 extern TIM_HandleTypeDef htim2;
