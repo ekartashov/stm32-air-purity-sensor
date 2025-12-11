@@ -83,6 +83,7 @@ static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p);
 static void SEN5X_Init(sen5x_handle_t *sen5x_handle_p);
 static void run_debug_tests(void);
 static void ssd1306_DisplayDebugMode(void);
+bool poll_is_debug_mode(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -122,28 +123,8 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-
-  uint32_t startup_time = HAL_GetTick();
-  uint8_t in_debug_mode = 0;
-  while (HAL_GetTick() - startup_time < 1000)
-  {
-    if (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
-    {
-      // Button is pressed during startup window
-      uint32_t btn_press_start = HAL_GetTick();
-      while (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
-      {
-        if (HAL_GetTick() - btn_press_start >= 100)
-        {
-          in_debug_mode = 1;
-          break;
-        }
-        HAL_Delay(10); // Small delay to prevent tight loop
-      }
-      break;
-    }
-    HAL_Delay(100); // Check periodically
-  }
+  bool in_debug_mode = poll_is_debug_mode(); //
+  
   if (in_debug_mode)
   {
     // Buzzer and LED blinking sequence
@@ -574,10 +555,10 @@ static void SEN5X_Init(sen5x_handle_t *sen5x_handle_p)
 // This function will run various debug tests for different components
 static void run_debug_tests(void)
 {
-    // Call SEN5X debug test
+    // Call SEN5X debug test (once because uses onboard EEPROM)
     sen5x_run_full_test_once();
 
-    // Call SCD4x debug test
+    // Call SCD4x debug test (once because uses onboard EEPROM)
     scd4x_run_full_test_once();
 
     // Call SSD1305 debug test
@@ -592,6 +573,31 @@ void ssd1306_DisplayDebugMode(void) {
     ssd1306_Fill(Black);
     ssd1306_WriteString(debug_screen_msg, Font_11x18, White);
     ssd1306_UpdateScreen();
+}
+
+// Poll for 1s for user pressing button
+bool poll_is_debug_mode()
+{
+  uint32_t startup_time = HAL_GetTick();
+  while (HAL_GetTick() - startup_time < 1000)
+  {
+    if (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
+    {
+      // Button is pressed during startup window
+      uint32_t btn_press_start = HAL_GetTick();
+      while (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)
+      {
+        if (HAL_GetTick() - btn_press_start >= 100)
+        {
+          return true;
+        }
+        HAL_Delay(10); // Small delay to prevent tight loop
+      }
+      break;
+    }
+    HAL_Delay(100); // Check periodically
+  }
+  return false;
 }
 /* USER CODE END 5 */
 
