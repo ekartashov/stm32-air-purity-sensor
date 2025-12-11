@@ -65,9 +65,6 @@ static const Buzzer_Note alert_melody[] = {
     { 0,       100 },  // 0 = rest
     { 0xFFFF,  0 },    // terminator
 };
-
-static uint32_t last_led_update = 0;
-static uint8_t led_sequence_step = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -522,6 +519,7 @@ static void run_debug_tests(void)
     }
 
     // Call SCD4x debug test
+    ssd1306_TestAll();
     scd4x_run_full_test_once();
 
     // TODO: Add debug tests for other peripherals here
