@@ -24,7 +24,13 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
+#include "ssd1306.h"
+#include "ssd1306_conf.h"
+#include "ssd1306_fonts.h"
+#include "ssd1306_tests.h"
 #include "driver_pwm-buzzer.h"
+#include "oled_graph.h"
 #include "driver_scd4x.h"
 #include "driver_scd4x_interface.h"
 #include "driver_scd4x_debug.h"
@@ -111,8 +117,8 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+  ssd1306_Init();
   SCD4x_Init(&scd4x_handle);
-  scd4x_run_full_test_once();
 
   // Check for debug mode entry during startup (5 seconds window)
   uint32_t startup_time = HAL_GetTick();
@@ -137,9 +143,15 @@ int main(void)
     HAL_Delay(100); // Check periodically
   }
 
+  // Update the display
+  ssd1306_UpdateScreen();
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN WHILE */
+  int counter = 0;
+  int arrangement = 1;
+  uint32_t start_time = HAL_GetTick();
+
   while (1)
   {
     if (in_debug_mode)
@@ -153,6 +165,75 @@ int main(void)
       HAL_Delay(1000);
       
     }
+    // // Check if 10 seconds have passed
+    // uint32_t current_time = HAL_GetTick();
+    // if(current_time - start_time > 10000) {
+    //     // Move to next arrangement
+    //     arrangement = (arrangement + 1) % 7;  // 7 different arrangements
+    //     start_time = current_time;
+    // }
+
+    // // Generate new data for all functions
+    // float new_value_1 = 50.0f + 20.0f * sinf(counter * 0.2f);
+    // float new_value_2 = 50.0f + 20.0f * cosf(counter * 0.2f);
+    // float new_value_3 = 50.0f + 20.0f * tanf(counter * 0.1f);
+    // float new_value_4 = (counter % 20 < 10) ? 20.0f : 80.0f;
+
+    // // Clamp values to prevent extreme spikes
+    // if(new_value_3 > 100.0f) new_value_3 = 100.0f;
+    // if(new_value_3 < 0.0f) new_value_3 = 0.0f;
+
+    // // Add new data to each buffer
+    // ring_buffer_push(&sensor_ring_buffer_1, new_value_1);
+    // ring_buffer_push(&sensor_ring_buffer_2, new_value_2);
+    // ring_buffer_push(&sensor_ring_buffer_3, new_value_3);
+    // ring_buffer_push(&sensor_ring_buffer_4, new_value_4);
+
+    // // Clear screen
+    // ssd1306_Fill(Black);
+
+    // // Select and arrange graphs based on current arrangement
+    // switch(arrangement) {
+    //     case 0:
+    //         // 1 graph spanning full screen
+    //         // Using the new API - we'll use graph_plot directly for this case
+    //         graph_plot(&sensor_ring_buffer_1, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 1, 0.0f, 100.0f, "CO2");
+    //         break;
+    //     case 1:
+    //         // 2 graphs: Top-bottom
+    //         // Debug: Draw graph boundaries to visualize the issue
+    //         graph_plots_1t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC");
+    //         break;
+    //     case 2:
+    //         // 2 graphs: Left-right
+    //         graph_plots_1l1r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC");
+    //         break;
+    //     case 3:
+    //         // 3 graphs: 1 wide on top, 2 shallow on bottom
+    //         graph_plots_1t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx");
+    //         break;
+    //     case 4:
+    //         // 3 graphs: 2 shallow on top, 1 wide on bottom
+    //         graph_plots_2t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "PM");
+    //         break;
+    //     case 5:
+    //         // 3 graphs: 1 tall on left, 2 short on right
+    //         graph_plots_1l2r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx");
+    //         break;
+    //     case 6:
+    //         // 4 graphs: 2x2 grid (custom size)
+    //         graph_plots_2t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, &sensor_ring_buffer_4, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx", "PM");
+    //         break;
+    // }
+
+    // // Draw debug visualization (this will show the blinking dots and screen outline)
+    // // debug_screen_edges();
+
+    // // Update the display
+    // ssd1306_UpdateScreen();
+
+    // counter++;
+    // // HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

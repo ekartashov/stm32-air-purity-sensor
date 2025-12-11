@@ -6,7 +6,6 @@
  * a buzzer using PWM signals on TIM2 channel 1.
  */
 
-#include <stdint.h>
 #include "main.h"
 #include "driver_pwm-buzzer_interface.h"
 
