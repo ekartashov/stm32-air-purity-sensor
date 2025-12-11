@@ -25,7 +25,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <math.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include "driver_serial.h"
 #include "ssd1306.h"
@@ -48,6 +50,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define PROJECT_NAME "Air Purity Sensor"
+#define PROJECT_VERSION "2.0.0"
+#define PROJECT_NAME_AND_VERSION_PADDED "    " PROJECT_NAME " VERSION: " PROJECT_VERSION "  "
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -141,26 +146,38 @@ int main(void)
 
   ssd1306_Init();
 
-  // Loading Screen
+  // Loading Screen 1 & Scrolling Project Name and Version
   char loading_screen_msg[] = "LOADING .";
   serial_print("\r\n===== Initializing Hardware =====\r\n");
   uint8_t loading_screen_msg_offset_x = (strlen(loading_screen_msg) + 2) * Font_11x18.width;
-
-  // Center Cursor
   uint8_t loading_screen_msg_x = (uint8_t)((SSD1306_WIDTH - loading_screen_msg_offset_x) / 2); // Leave some space for loading dots
   uint8_t loading_screen_msg_y = (uint8_t)((SSD1306_HEIGHT - Font_11x18.height) / 2);
   ssd1306_SetCursor(loading_screen_msg_x, loading_screen_msg_y);
-  ssd1306_Fill(Black);
   ssd1306_WriteString(loading_screen_msg, Font_11x18, White);
   ssd1306_UpdateScreen();
 
-  // Initialize Sensors and Show that on the OLED
+  serial_print("Project Name: ", PROJECT_NAME, "\n");
+  serial_print("Project Version: ", PROJECT_VERSION, "\n");
+  char project_name_and_version_msg[] = PROJECT_NAME_AND_VERSION_PADDED;
+  for(uint8_t i = 0; i < sizeof(project_name_and_version_msg) / sizeof(char); i++) {
+    ssd1306_SetCursor(loading_screen_msg_x, loading_screen_msg_y);
+    ssd1306_WriteString(loading_screen_msg, Font_11x18, White);
+    ssd1306_SetCursor(0, SSD1306_HEIGHT - Font_6x8.height);
+    ssd1306_WriteString(project_name_and_version_msg, Font_6x8, White);
+    ssd1306_UpdateScreen();
+    
+    memmove(project_name_and_version_msg, project_name_and_version_msg+1, sizeof(project_name_and_version_msg)-2);
+    project_name_and_version_msg[sizeof(project_name_and_version_msg)-2] = ' ';
+  }
+  
+  // Initialize SCD4X & Loading Screen 2
   SCD4x_Init(&scd4x_handle);
   loading_screen_msg_x = loading_screen_msg_x + strlen(loading_screen_msg) * Font_11x18.width;
   ssd1306_SetCursor(loading_screen_msg_x, loading_screen_msg_y);
   ssd1306_WriteString(".", Font_11x18, White);
   ssd1306_UpdateScreen();
 
+  // Initialize SEN5X & Loading Screen 3
   SEN5X_Init(&sen5x_handle);
   loading_screen_msg_x = loading_screen_msg_x + Font_11x18.width;
   ssd1306_SetCursor(loading_screen_msg_x, loading_screen_msg_y);
