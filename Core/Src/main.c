@@ -25,6 +25,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <math.h>
+#include "driver_serial.h"
 #include "ssd1306.h"
 #include "ssd1306_conf.h"
 #include "ssd1306_fonts.h"
@@ -34,7 +35,9 @@
 #include "driver_scd4x.h"
 #include "driver_scd4x_interface.h"
 #include "driver_scd4x_debug.h"
-#include <stdint.h>
+#include "driver_sen5x.h"
+#include "driver_sen5x_interface.h"
+#include "driver_sen5x_debug.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +60,7 @@ TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 static scd4x_handle_t scd4x_handle; // Initialized in SCD4x_Init()
+static sen5x_handle_t sen5x_handle; // Initialized in SEN5X_Init()
 
 static const Buzzer_Note alert_melody[] = {
     { NOTE_C4, 166 },
@@ -74,6 +78,7 @@ static void MX_I2C4_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p);
+static void SEN5X_Init(sen5x_handle_t *sen5x_handle_p);
 static void run_debug_tests(void);
 /* USER CODE END PFP */
 
@@ -114,10 +119,7 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-  ssd1306_Init();
-  SCD4x_Init(&scd4x_handle);
 
-  // Check for debug mode entry during startup (5 seconds window)
   uint32_t startup_time = HAL_GetTick();
   uint8_t in_debug_mode = 0;
   while (HAL_GetTick() - startup_time < 1000)
@@ -139,29 +141,45 @@ int main(void)
     }
     HAL_Delay(100); // Check periodically
   }
+  if (in_debug_mode)
+  {
+    // Buzzer and LED blinking sequence
+    Buzzer_PlayMelody(alert_melody);
+    for (int8_t ctr = 0; ctr < 6; ++ctr){
+      HAL_GPIO_TogglePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin);
+      HAL_Delay(33);
+      HAL_GPIO_TogglePin(LED_MID_GPIO_Port, LED_MID_Pin);
+      HAL_Delay(33);
+      HAL_GPIO_TogglePin(LED_LOW_GPIO_Port, LED_LOW_Pin);
+      HAL_Delay(33);
+    }
+  }
+
+  ssd1306_Init();
+  SCD4x_Init(&scd4x_handle);
+  SEN5X_Init(&sen5x_handle);
 
   // Update the display
   ssd1306_UpdateScreen();
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN WHILE */
-  int counter = 0;
-  int arrangement = 1;
-  uint32_t start_time = HAL_GetTick();
+  if (in_debug_mode) 
+  {
+    serial_print("DEBUG MODE: Running peripheral tests...\r\n");
+    while (1) {
+      run_debug_tests();
+      HAL_Delay(1000);
+    }
+  }
+  // int counter = 0;
+  // int arrangement = 1;
+  // uint32_t start_time = HAL_GetTick();
 
   while (1)
   {
-    if (in_debug_mode)
-    {
-      /* Enter debug mode - run debug tests continuously */
-      run_debug_tests();
-    }
-    else
-    {
-      // Normal operation
-      HAL_Delay(1000);
-      
-    }
+    HAL_Delay(1000);
     // // Check if 10 seconds have passed
     // uint32_t current_time = HAL_GetTick();
     // if(current_time - start_time > 10000) {
@@ -491,44 +509,52 @@ static void SCD4x_Init(scd4x_handle_t *scd4x_handle_p)
     }
 }
 
+static void SEN5X_Init(sen5x_handle_t *sen5x_handle_p)
+{
+    uint8_t res;
+
+    /* Link the interface functions */
+    DRIVER_SEN5X_LINK_INIT(sen5x_handle_p, sen5x_handle_t);
+    DRIVER_SEN5X_LINK_IIC_INIT(sen5x_handle_p, sen5x_interface_iic_init);
+    DRIVER_SEN5X_LINK_IIC_DEINIT(sen5x_handle_p, sen5x_interface_iic_deinit);
+    DRIVER_SEN5X_LINK_IIC_WRITE_COMMAND(sen5x_handle_p, sen5x_interface_iic_write_cmd);
+    DRIVER_SEN5X_LINK_IIC_READ_COMMAND(sen5x_handle_p, sen5x_interface_iic_read_cmd);
+    DRIVER_SEN5X_LINK_DELAY_MS(sen5x_handle_p, sen5x_interface_delay_ms);
+    DRIVER_SEN5X_LINK_DEBUG_PRINT(sen5x_handle_p, sen5x_interface_debug_print);
+
+    /* Initialize the chip (calls iic_init internally) */
+    res = sen5x_init(sen5x_handle_p);
+    if (res != 0)
+    {
+        sen5x_interface_debug_print("sen5x_init failed: %u\r\n", res);
+        Error_Handler();
+    }
+
+    /* Start measurement (similar to SCD4X periodic measurement) */
+    res = sen5x_start_measurement(sen5x_handle_p);
+    if (res != 0)
+    {
+        sen5x_interface_debug_print("sen5x_start_measurement failed: %u\r\n", res);
+        Error_Handler();
+    }
+
+    /* Wait for sensor to start producing data (similar to SCD4X debug test) */
+    sen5x_interface_delay_ms(5000); // Wait 5 seconds for first measurement
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN 5 */
+// This function will run various debug tests for different components
 static void run_debug_tests(void)
 {
-    // This function will run various debug tests for different components
-    // Currently, we'll just call the SCD4x test function as a placeholder
-    // In the future, this function can be expanded to include tests for other peripherals
-
-
-    // For now, we'll just add a simple debug print to indicate we're in debug mode
-    scd4x_interface_debug_print("DEBUG MODE: Running peripheral tests...\r\n");
-
-    // LED blinking sequence
-    Buzzer_PlayMelody(alert_melody);
-    for (int8_t ctr = 0; ctr < 3; ++ctr){
-      HAL_GPIO_WritePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin, GPIO_PIN_SET);
-      HAL_Delay(100);
-      HAL_GPIO_WritePin(LED_HIGH_GPIO_Port, LED_HIGH_Pin, GPIO_PIN_RESET);
-      HAL_GPIO_WritePin(LED_MID_GPIO_Port, LED_MID_Pin, GPIO_PIN_SET);
-      HAL_Delay(100);
-      HAL_GPIO_WritePin(LED_MID_GPIO_Port, LED_MID_Pin, GPIO_PIN_RESET);
-      HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_SET);
-      HAL_Delay(100);
-      HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_RESET);
-    }
+    // Call SEN5X debug test
+    sen5x_run_full_test_once();
 
     // Call SCD4x debug test
-    ssd1306_TestAll();
     scd4x_run_full_test_once();
 
-    // TODO: Add debug tests for other peripherals here
-    // For example:
-    // test_pwm_buzzer();
-    // test_adc_sensors();
-    // test_i2c_communication();
-    // etc.
-
+    // Call SSD1305 debug test
+    // ssd1306_TestAll();
 
 }
 /* USER CODE END 5 */

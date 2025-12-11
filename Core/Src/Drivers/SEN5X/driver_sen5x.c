@@ -869,7 +869,7 @@ uint8_t sen5x_read_raw_value(sen5x_handle_t *handle, sen5x_raw_t *raw)
     raw->humidity_raw = (int16_t)(((uint16_t)(buf[0]) << 8) | ((uint16_t)(buf[1]) << 0));                                   /* set humidity raw */
     raw->temperature_raw = (int16_t)(((uint16_t)(buf[3]) << 8) | ((uint16_t)(buf[4]) << 0));                                /* set temperature raw */
     raw->voc_raw = (uint16_t)(((uint16_t)(buf[6]) << 8) | ((uint16_t)(buf[7]) << 0));                                       /* set voc raw */
-    raw->nox_raw = (uint16_t)(((uint16_t)(buf[9]) << 8) | ((uint16_t)(buf[10]) << 0));                                      /* set nox raw */
+    raw->nox_raw = (uint16_t)(((uint16_t)(buf[8]) << 8) | ((uint16_t)(buf[9]) << 0));                                      /* set nox raw */
     if (raw->humidity_raw != 0x7FFF)                                                                                        /* check valid */
     {
         raw->humidity_percentage = (float)(raw->humidity_raw) / 100.0f;                                                     /* set humidity percentage */
@@ -1111,30 +1111,31 @@ uint8_t sen5x_set_warm_start(sen5x_handle_t *handle, uint16_t param)
 {
     uint8_t res;
     uint8_t buf[3];
-    
+
     if (handle == NULL)                                                                                   /* check handle */
     {
-        return 2;                                                                                         /* return error */
+        return 2;                                                                                     /* return error */
     }
     if (handle->inited != 1)                                                                              /* check handle initialization */
     {
-        return 3;                                                                                         /* return error */
+        return 3;                                                                                     /* return error */
     }
 
     buf[0] = ((uint16_t)param >> 8) & 0xFF;                                                               /* set param msb */
     buf[1] = ((uint16_t)param >> 0) & 0xFF;                                                               /* set param lsb */
     buf[2] = a_sen5x_crc(handle, (uint8_t *)&buf[0], 2);                                                  /* set crc */
-    res = a_sen5x_iic_write(handle, SEN5X_ADDRESS, SEN5X_IIC_COMMAND_READ_WRITE_WARM_START_PARAMS, 
+    res = a_sen5x_iic_write(handle, SEN5X_ADDRESS, SEN5X_IIC_COMMAND_READ_WRITE_WARM_START_PARAMS,
                            (uint8_t *)buf, 3, 20);                                                        /* set warm start command */
-    if (res != 0)                                                                                         /* check result */
+    if (res != 0)                                                                                     /* check result */
     {
         handle->debug_print("sen5x: set warm start failed.\n");                                           /* set warm start failed */
-       
-        return 1;                                                                                         /* return error */
+
+        return 1;                                                                                     /* return error */
     }
-    
-    return 0;                                                                                             /* success return 0 */
+
+    return 0;                                                                                         /* success return 0 */
 }
+
 
 /**
  * @brief      get warm start
@@ -2073,7 +2074,7 @@ uint8_t sen5x_get_version(sen5x_handle_t *handle, uint8_t *version)
 {
     uint8_t res;
     uint8_t buf[3];
-    
+
     if (handle == NULL)                                                                                        /* check handle */
     {
         return 2;                                                                                              /* return error */
@@ -2082,22 +2083,56 @@ uint8_t sen5x_get_version(sen5x_handle_t *handle, uint8_t *version)
     {
         return 3;                                                                                              /* return error */
     }
-    
+
     memset(buf, 0, sizeof(uint8_t) * 3);                                                                       /* clear the buffer */
     res = a_sen5x_iic_read(handle, SEN5X_ADDRESS, SEN5X_IIC_COMMAND_READ_VERSION, (uint8_t *)buf, 3, 20);      /* read version command */
     if (res != 0)                                                                                              /* check result */
     {
         handle->debug_print("sen5x: read version failed.\n");                                                  /* read version failed */
-       
+
         return 1;                                                                                              /* return error */
     }
     if (buf[2] != a_sen5x_crc(handle, (uint8_t *)&buf[0], 2))                                                  /* check crc */
     {
         handle->debug_print("sen5x: crc is error.\n");                                                         /* crc is error */
-       
+
         return 1;                                                                                              /* return error */
     }
     *version = buf[0];                                                                                         /* set version */
+
+    return 0;                                                                                                  /* success return 0 */
+}
+
+/**
+ * @brief      persist settings
+ * @param[in]  *handle pointer to a sen5x handle structure
+ * @return     status code
+ *             - 0 success
+ *             - 1 persist settings failed
+ *             - 2 handle is NULL
+ *             - 3 handle is not initialized
+ * @note       none
+ */
+uint8_t sen5x_persist_settings(sen5x_handle_t *handle)
+{
+    uint8_t res;
+
+    if (handle == NULL)                                                                                        /* check handle */
+    {
+        return 2;                                                                                              /* return error */
+    }
+    if (handle->inited != 1)                                                                                   /* check handle initialization */
+    {
+        return 3;                                                                                              /* return error */
+    }
+
+    res = a_sen5x_iic_write(handle, SEN5X_ADDRESS, SEN5X_IIC_COMMAND_READ_WRITE_WARM_START_PARAMS, NULL, 0, 20);  /* persist settings command */
+    if (res != 0)                                                                                              /* check result */
+    {
+        handle->debug_print("sen5x: persist settings failed.\n");                                             /* persist settings failed */
+
+        return 1;                                                                                              /* return error */
+    }
 
     return 0;                                                                                                  /* success return 0 */
 }

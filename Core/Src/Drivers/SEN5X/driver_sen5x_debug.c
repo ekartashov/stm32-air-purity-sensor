@@ -1,11 +1,102 @@
+/* driver_sen5x_debug.c */
+
 #include "driver_sen5x.h"
 #include "driver_sen5x_interface.h"
-#include "main.h"
+#include "driver_sen5x_debug.h"
 
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>   /* labs */
+
+/* Global handle for debug use */
 static sen5x_handle_t g_sen5x_handle;
 
-static void sen5x_init_handle_default(void)
+/* One-shot guard so you can call sen5x_run_full_test_once() inside while(1) */
+static uint8_t g_sen5x_full_test_ran = 0;
+
+/* ---------- Helpers ---------- */
+
+/**
+ * @brief Print a float as fixed-point using only integer formatting.
+ *
+ * This avoids %f, so it works even if printf float support is disabled.
+ */
+static void sen5x_debug_print_fixed(const char *label,
+                                    float value,
+                                    const char *unit,
+                                    uint8_t decimals)
 {
+    if (unit == NULL) {
+        unit = "";
+    }
+
+    /* Handle NaN explicitly if FP_NAN is used in the driver */
+    if (isnan(value)) {
+        sen5x_interface_debug_print("  %s: NaN %s\r\n", label, unit);
+        return;
+    }
+
+    long scale = 1;
+    for (uint8_t i = 0; i < decimals; ++i) {
+        scale *= 10;
+    }
+
+    float scaled_f = value * (float)scale;
+    long scaled;
+
+    /* Round correctly for positive and negative values */
+    if (scaled_f >= 0.0f) {
+        scaled = (long)(scaled_f + 0.5f);
+    } else {
+        scaled = (long)(scaled_f - 0.5f);
+    }
+
+    long ipart = scaled / scale;
+    long frac  = labs(scaled % scale);
+
+    if (decimals == 0) {
+        sen5x_interface_debug_print("  %s: %ld %s\r\n",
+                                    label, ipart, unit);
+    } else if (decimals == 1) {
+        sen5x_interface_debug_print("  %s: %ld.%01ld %s\r\n",
+                                    label, ipart, frac, unit);
+    } else if (decimals == 2) {
+        sen5x_interface_debug_print("  %s: %ld.%02ld %s\r\n",
+                                    label, ipart, frac, unit);
+    } else {
+        /* Clamp to 3 decimals for simplicity */
+        sen5x_interface_debug_print("  %s: %ld.%03ld %s\r\n",
+                                    label, ipart, frac, unit);
+    }
+}
+
+/* Retry wrapper for raw data – VOC/NOx are often slower to become “ready” */
+static uint8_t sen5x_debug_read_raw_with_retry(sen5x_raw_t *raw,
+                                               uint8_t max_retries,
+                                               uint16_t delay_ms)
+{
+    uint8_t res = 0;
+
+    for (uint8_t i = 0; i < max_retries; ++i)
+    {
+        res = sen5x_read_raw_value(&g_sen5x_handle, raw);
+        if (res == 0)
+        {
+            return 0;
+        }
+
+        /* The driver itself prints "sen5x: data not ready." */
+        sen5x_interface_delay_ms(delay_ms);
+    }
+
+    return res;
+}
+
+/* ---------- Public API ---------- */
+
+void sen5x_init_handle_default(void)
+{
+    /* Wire LibDriver-style function pointers */
     DRIVER_SEN5X_LINK_INIT(&g_sen5x_handle, sen5x_handle_t);
     DRIVER_SEN5X_LINK_IIC_INIT(&g_sen5x_handle, sen5x_interface_iic_init);
     DRIVER_SEN5X_LINK_IIC_DEINIT(&g_sen5x_handle, sen5x_interface_iic_deinit);
@@ -14,35 +105,35 @@ static void sen5x_init_handle_default(void)
     DRIVER_SEN5X_LINK_DELAY_MS(&g_sen5x_handle, sen5x_interface_delay_ms);
     DRIVER_SEN5X_LINK_DEBUG_PRINT(&g_sen5x_handle, sen5x_interface_debug_print);
 
-    /* You have SCD41 */
-    (void)sen5x_set_type(&g_sen5x_handle, SCD41);
+    /* You’re using SEN55 */
+    (void)sen5x_set_type(&g_sen5x_handle, SEN55);
 }
 
 void sen5x_run_full_test_once(void)
 {
-    sen5x_info_t info;
-    sen5x_bool_t ready;
-    uint8_t res;
+    if (g_sen5x_full_test_ran)
+    {
+        return;
+    }
+    g_sen5x_full_test_ran = 1;
 
-    /* Correct types: co2_ppm must be uint16_t, not float */
-    uint16_t co2_raw  = 0;
-    uint16_t co2_ppm  = 0;
-    uint16_t t_raw    = 0;
-    uint16_t rh_raw   = 0;
-    float    t_degC   = 0.0f;
-    float    rh_pct   = 0.0f;
+    sen5x_info_t   info;
+    uint8_t        res;
+    sen5x_pm_t     pm_data;
+    sen5x_raw_t    raw_data;
+    char           product_name[32]  = {0};
+    char           serial_number[32] = {0};
+    uint32_t       device_status     = 0;
+    uint8_t        device_version    = 0;
+    sen5x_type_t   sensor_type       = 0;
+    uint8_t        raw_buf[3]        = {0};
 
-    // uint16_t offset_reg, altitude_reg, pressure_reg;
-    uint16_t variant;
-    uint16_t serial[3];
-    // sen5x_bool_t asc_enable;
-    sen5x_bool_t malfunction;
-
-    uint8_t raw_buf[3] = {0};
+    memset(&pm_data,  0, sizeof(pm_data));
+    memset(&raw_data, 0, sizeof(raw_data));
 
     sen5x_init_handle_default();
 
-    sen5x_interface_debug_print("\r\n===== SCD4x FULL SELF-TEST =====\r\n");
+    sen5x_interface_debug_print("===== SEN5X FULL SELF-TEST =====\r\n");
 
     /* init */
     res = sen5x_init(&g_sen5x_handle);
@@ -53,274 +144,208 @@ void sen5x_run_full_test_once(void)
     }
     sen5x_interface_debug_print("sen5x_init: OK\r\n");
 
-    /* info */
+    /* static driver info */
     res = sen5x_info(&info);
     if (res == 0)
     {
-        sen5x_interface_debug_print("Chip: %s, Manufacturer: %s, IF: %s\r\n",
-                                    info.chip_name,
-                                    info.manufacturer_name,
-                                    info.interface);
-    }
+        uint32_t ver = info.driver_version;
+        uint32_t ver_major = ver / 1000U;
+        uint32_t ver_minor = (ver / 100U) % 10U;
+        uint32_t ver_patch = ver % 100U;
 
-    /* sensor variant via high-level API */
-    res = sen5x_get_sensor_variant(&g_sen5x_handle, &variant);
-    if (res == 0)
-    {
-        sen5x_interface_debug_print("Sensor variant: 0x%04X\r\n", variant);
-    }
-    else
-    {
-        sen5x_interface_debug_print("sen5x_get_sensor_variant: ERROR %d\r\n", res);
-    }
-
-    /* read serial number */
-    res = sen5x_get_serial_number(&g_sen5x_handle, serial);
-    if (res == 0)
-    {
-        sen5x_interface_debug_print("Serial: %04X-%04X-%04X\r\n",
-                                    serial[0], serial[1], serial[2]);
-    }
-
-    /* persist settings (harmless if unchanged) */
-    res = sen5x_persist_settings(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_persist_settings: %s\r\n", (res == 0) ? "OK" : "ERROR");
-
-    /* normal periodic measurement */
-    res = sen5x_start_periodic_measurement(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_start_periodic_measurement: %s\r\n",
-                                (res == 0) ? "OK" : "ERROR");
-
-    if (res == 0)
-    {
-        /* Wait for data ready (typ 5 s, max 12 s -> we wait up to ~15 s) */
-        for (int i = 0; i < 15; ++i)
-        {
-            sen5x_interface_delay_ms(1000);
-            res = sen5x_get_data_ready_status(&g_sen5x_handle, &ready);
-            if (res != 0) break;
-            if (ready == SEN5X_BOOL_TRUE) break;
-        }
-
-        sen5x_interface_debug_print("sen5x_get_data_ready_status: %s\r\n",
-                                    (res == 0) ? "OK" : "ERROR");
-
-        if (res == 0 && ready == SEN5X_BOOL_TRUE)
-        {
-            res = sen5x_read(&g_sen5x_handle,
-                             &co2_raw, &co2_ppm,
-                             &t_raw, &t_degC,
-                             &rh_raw, &rh_pct);
-
-            if (res != 0)
-            {
-                sen5x_interface_debug_print("sen5x_read (periodic): ERROR %d\r\n", res);
-            }
-            else
-            {
-                /* Failsafe: if ppm is 0 but raw isn't, trust raw */
-                if (co2_ppm == 0 && co2_raw != 0)
-                {
-                    co2_ppm = co2_raw;
-                }
-
-                long t_int  = (long)t_degC;
-                long t_frac = (long)((t_degC - t_int) * 100.0f);
-                long rh_int  = (long)rh_pct;
-                long rh_frac = (long)((rh_pct - rh_int) * 100.0f);
-
-                sen5x_interface_debug_print(
-                    "sen5x_read (periodic): OK\r\n"
-                    "Periodic: CO2=%u ppm (raw=%u), "
-                    "T=%ld.%02ld C (raw=%u), "
-                    "RH=%ld.%02ld %% (raw=%u)\r\n",
-                    (unsigned)co2_ppm,
-                    (unsigned)co2_raw,
-                    t_int, t_frac, t_raw,
-                    rh_int, rh_frac, rh_raw
-                );
-            }
-        }
-
-        res = sen5x_stop_periodic_measurement(&g_sen5x_handle);
-        sen5x_interface_debug_print("sen5x_stop_periodic_measurement: %s\r\n",
-                                    (res == 0) ? "OK" : "ERROR");
-        sen5x_interface_delay_ms(500);
-    }
-
-    /* low power periodic (optional – may fail depending on state / FW) */
-    res = sen5x_start_low_power_periodic_measurement(&g_sen5x_handle);
-    if (res != 0)
-    {
         sen5x_interface_debug_print(
-            "sen5x_start_low_power_periodic_measurement: SKIPPED (res=%d)\r\n", res);
+            "Chip: %s, Manufacturer: %s, IF: %s, Driver v%lu.%lu.%lu\r\n",
+            info.chip_name,
+            info.manufacturer_name,
+            info.interface,
+            (unsigned long)ver_major,
+            (unsigned long)ver_minor,
+            (unsigned long)ver_patch
+        );
     }
     else
     {
-        /* Low power mode has long interval (~30s). We just check readiness once. */
-        sen5x_interface_delay_ms(32000);
-
-        res = sen5x_get_data_ready_status(&g_sen5x_handle, &ready);
-        sen5x_interface_debug_print("sen5x_get_data_ready_status (LP): %s\r\n",
-                                    (res == 0) ? "OK" : "ERROR");
-
-        if (res == 0 && ready == SEN5X_BOOL_TRUE)
-        {
-            res = sen5x_read(&g_sen5x_handle,
-                             &co2_raw, &co2_ppm,
-                             &t_raw, &t_degC,
-                             &rh_raw, &rh_pct);
-
-            if (res != 0)
-            {
-                sen5x_interface_debug_print("sen5x_read (LP periodic): ERROR %d\r\n", res);
-            }
-            else
-            {
-                if (co2_ppm == 0 && co2_raw != 0)
-                {
-                    co2_ppm = co2_raw;
-                }
-
-                long t_int  = (long)t_degC;
-                long t_frac = (long)((t_degC - t_int) * 100.0f);
-                long rh_int  = (long)rh_pct;
-                long rh_frac = (long)((rh_pct - rh_int) * 100.0f);
-
-                sen5x_interface_debug_print(
-                    "sen5x_read (LP periodic): OK\r\n"
-                    "LP: CO2=%u ppm (raw=%u), "
-                    "T=%ld.%02ld C (raw=%u), "
-                    "RH=%ld.%02ld %% (raw=%u)\r\n",
-                    (unsigned)co2_ppm,
-                    (unsigned)co2_raw,
-                    t_int, t_frac, t_raw,
-                    rh_int, rh_frac, rh_raw
-                );
-            }
-        }
-
-        res = sen5x_stop_periodic_measurement(&g_sen5x_handle);
-        sen5x_interface_debug_print("sen5x_stop_periodic_measurement (after LP): %s\r\n",
-                                    (res == 0) ? "OK" : "ERROR");
-        sen5x_interface_delay_ms(500);
+        sen5x_interface_debug_print("sen5x_info: ERROR %d\r\n", res);
     }
 
-    /* single shot measurement */
-    res = sen5x_measure_single_shot(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_measure_single_shot: %s\r\n",
-                                (res == 0) ? "OK" : "ERROR");
+    /* Sensor type (SEN50 / 54 / 55 / 60 ...) */
+    res = sen5x_get_type(&g_sen5x_handle, &sensor_type);
     if (res == 0)
     {
-        sen5x_interface_delay_ms(5000); /* max command duration */
-        res = sen5x_read(&g_sen5x_handle,
-                         &co2_raw, &co2_ppm,
-                         &t_raw, &t_degC,
-                         &rh_raw, &rh_pct);
-        if (res != 0)
+        sen5x_interface_debug_print("Sensor type: %u\r\n", (unsigned)sensor_type);
+    }
+    else
+    {
+        sen5x_interface_debug_print("sen5x_get_type: ERROR %d\r\n", res);
+    }
+
+    /* Product name */
+    res = sen5x_get_product_name(&g_sen5x_handle, product_name);
+    if (res == 0)
+    {
+        sen5x_interface_debug_print("Product name: %s\r\n", product_name);
+    }
+    else
+    {
+        sen5x_interface_debug_print("sen5x_get_product_name: ERROR %d\r\n", res);
+    }
+
+    /* Serial number */
+    res = sen5x_get_serial_number(&g_sen5x_handle, serial_number);
+    if (res == 0)
+    {
+        sen5x_interface_debug_print("Serial: %s\r\n", serial_number);
+    }
+    else
+    {
+        sen5x_interface_debug_print("sen5x_get_serial_number: ERROR %d\r\n", res);
+    }
+
+    /* Device version */
+    res = sen5x_get_version(&g_sen5x_handle, &device_version);
+    if (res == 0)
+    {
+        sen5x_interface_debug_print("Version: %u\r\n", (unsigned)device_version);
+    }
+    else
+    {
+        sen5x_interface_debug_print("sen5x_get_version: ERROR %d\r\n", res);
+    }
+
+    /* Device status */
+    res = sen5x_get_device_status(&g_sen5x_handle, &device_status);
+    if (res == 0)
+    {
+        sen5x_interface_debug_print("Device Status: 0x%08X\r\n", (unsigned)device_status);
+    }
+    else
+    {
+        sen5x_interface_debug_print("sen5x_get_device_status: ERROR %d\r\n", res);
+    }
+
+    /* Persist settings (harmless if unchanged) */
+    res = sen5x_persist_settings(&g_sen5x_handle);
+    sen5x_interface_debug_print("sen5x_persist_settings: %s\r\n",
+                                (res == 0) ? "OK" : "ERROR");
+
+    /* Start measurement */
+    res = sen5x_start_measurement(&g_sen5x_handle);
+    sen5x_interface_debug_print("sen5x_start_measurement: %s\r\n",
+                                (res == 0) ? "OK" : "ERROR");
+
+    if (res == 0)
+    {
+        /* Give the sensor time to produce the first fully-populated sample. */
+        sen5x_interface_debug_print("Waiting for first sample...\r\n");
+        sen5x_interface_delay_ms(7000);
+
+        /* --- PM block --- */
+        res = sen5x_read_pm_value(&g_sen5x_handle, &pm_data);
+        if (res == 0)
         {
-            sen5x_interface_debug_print("sen5x_read (single shot): ERROR %d\r\n", res);
+            sen5x_interface_debug_print("PM RAW (mass conc. [0.1 ug/m3 units]):\r\n");
+            sen5x_interface_debug_print(
+                "  PM1.0: %u, PM2.5: %u, PM4.0: %u, PM10: %u\r\n",
+                pm_data.mass_concentration_pm1p0_raw,
+                pm_data.mass_concentration_pm2p5_raw,
+                pm_data.mass_concentration_pm4p0_raw,
+                pm_data.mass_concentration_pm10_raw
+            );
+            sen5x_interface_debug_print(
+                "PM RAW (number conc. [0.1 #/cm3 units]):\r\n"
+                "  PM0.5: %u, PM1.0: %u, PM2.5: %u, PM4.0: %u, PM10: %u\r\n",
+                pm_data.number_concentration_pm0p5_raw,
+                pm_data.number_concentration_pm1p0_raw,
+                pm_data.number_concentration_pm2p5_raw,
+                pm_data.number_concentration_pm4p0_raw,
+                pm_data.number_concentration_pm10_raw
+            );
+            sen5x_interface_debug_print(
+                "  Typical particle raw: %u\r\n",
+                pm_data.typical_particle_raw
+            );
+
+            sen5x_interface_debug_print("PM Converted:\r\n");
+            /* 1 decimal place for ug/m3 and #/cm3, 3 for size in um */
+            sen5x_debug_print_fixed("PM1.0", pm_data.pm1p0_ug_m3,  "ug/m3", 1);
+            sen5x_debug_print_fixed("PM2.5", pm_data.pm2p5_ug_m3,  "ug/m3", 1);
+            sen5x_debug_print_fixed("PM4.0", pm_data.pm4p0_ug_m3,  "ug/m3", 1);
+            sen5x_debug_print_fixed("PM10",  pm_data.pm10_ug_m3,   "ug/m3", 1);
+
+            sen5x_debug_print_fixed("N0.5",  pm_data.pm0p5_cm3,    "#/cm3", 1);
+            sen5x_debug_print_fixed("N1.0",  pm_data.pm1p0_cm3,    "#/cm3", 1);
+            sen5x_debug_print_fixed("N2.5",  pm_data.pm2p5_cm3,    "#/cm3", 1);
+            sen5x_debug_print_fixed("N4.0",  pm_data.pm4p0_cm3,    "#/cm3", 1);
+            sen5x_debug_print_fixed("N10",   pm_data.pm10_cm3,     "#/cm3", 1);
+
+            sen5x_debug_print_fixed("D_typ", pm_data.typical_particle_um, "um", 3);
+
+            sen5x_interface_debug_print("  pm_valid flag: %u\r\n",
+                                        (unsigned)pm_data.pm_valid);
         }
         else
         {
-            if (co2_ppm == 0 && co2_raw != 0)
-            {
-                co2_ppm = co2_raw;
-            }
-
-            long t_int  = (long)t_degC;
-            long t_frac = (long)((t_degC - t_int) * 100.0f);
-            long rh_int  = (long)rh_pct;
-            long rh_frac = (long)((rh_pct - rh_int) * 100.0f);
-
-            sen5x_interface_debug_print(
-                "sen5x_read (single shot): OK\r\n"
-                "Single: CO2=%u ppm (raw=%u), "
-                "T=%ld.%02ld C (raw=%u), "
-                "RH=%ld.%02ld %% (raw=%u)\r\n",
-                (unsigned)co2_ppm,
-                (unsigned)co2_raw,
-                t_int, t_frac, t_raw,
-                rh_int, rh_frac, rh_raw
-            );
+            sen5x_interface_debug_print("sen5x_read_pm_value: ERROR %d\r\n", res);
         }
-    }
 
-    /* single shot RHT only */
-    res = sen5x_measure_single_shot_rht_only(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_measure_single_shot_rht_only: %s\r\n",
-                                (res == 0) ? "OK" : "ERROR");
-    if (res == 0)
-    {
-        sen5x_interface_delay_ms(5000);
-        res = sen5x_read(&g_sen5x_handle,
-                         &co2_raw, &co2_ppm,
-                         &t_raw, &t_degC,
-                         &rh_raw, &rh_pct);
-        if (res != 0)
+        /* --- Raw block (T, RH, VOC, NOx) --- */
+        res = sen5x_debug_read_raw_with_retry(&raw_data, 10, 1000);
+        if (res == 0)
         {
-            sen5x_interface_debug_print("sen5x_read (single shot RHT only): ERROR %d\r\n", res);
+            sen5x_interface_debug_print("Raw environmental values (raw):\r\n");
+            sen5x_interface_debug_print(
+                "  Humidity raw     : %d\r\n"
+                "  Temperature raw  : %d\r\n"
+                "  VOC raw          : %u\r\n"
+                "  NOx raw          : %u\r\n",
+                (int)raw_data.humidity_raw,
+                (int)raw_data.temperature_raw,
+                (unsigned)raw_data.voc_raw,
+                (unsigned)raw_data.nox_raw
+            );
+
+            sen5x_interface_debug_print("Raw environmental values (converted):\r\n");
+            sen5x_debug_print_fixed("Humidity",    raw_data.humidity_percentage,   "%",    2);
+            sen5x_debug_print_fixed("Temperature", raw_data.temperature_degree,    "degC", 2);
+            sen5x_debug_print_fixed("VOC index",   raw_data.voc,                   "",     1);
+            sen5x_debug_print_fixed("NOx index",   raw_data.nox,                   "",     1);
         }
         else
         {
-            if (co2_ppm == 0 && co2_raw != 0)
-            {
-                co2_ppm = co2_raw;
-            }
-
-            long t_int  = (long)t_degC;
-            long t_frac = (long)((t_degC - t_int) * 100.0f);
-            long rh_int  = (long)rh_pct;
-            long rh_frac = (long)((rh_pct - rh_int) * 100.0f);
-
-            sen5x_interface_debug_print(
-                "sen5x_read (single shot RHT only): OK\r\n"
-                "RHT-only: CO2=%u ppm (raw=%u), "
-                "T=%ld.%02ld C (raw=%u), "
-                "RH=%ld.%02ld %% (raw=%u)\r\n",
-                (unsigned)co2_ppm,
-                (unsigned)co2_raw,
-                t_int, t_frac, t_raw,
-                rh_int, rh_frac, rh_raw
-            );
+            sen5x_interface_debug_print("sen5x_read_raw_value (with retries) failed, res=%d\r\n",
+                                        res);
         }
+
+        /* Stop measurement regardless of whether the above failed */
+        res = sen5x_stop_measurement(&g_sen5x_handle);
+        sen5x_interface_debug_print("sen5x_stop_measurement: %s\r\n",
+                                    (res == 0) ? "OK" : "ERROR");
     }
 
-    /* self test */
-    res = sen5x_perform_self_test(&g_sen5x_handle, &malfunction);
-    sen5x_interface_debug_print("sen5x_perform_self_test: %s, malfunction=%u\r\n",
-                                (res == 0) ? "OK" : "ERROR",
-                                (unsigned)malfunction);
-
-    /* power down / wake up / reinit – non-fatal if they fail */
-    res = sen5x_power_down(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_power_down: %s\r\n",
+    /* Fan cleaning (non-fatal) */
+    res = sen5x_start_fan_cleaning(&g_sen5x_handle);
+    sen5x_interface_debug_print("sen5x_start_fan_cleaning: %s\r\n",
                                 (res == 0) ? "OK" : "ERROR");
-    sen5x_interface_delay_ms(10);
 
-    res = sen5x_wake_up(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_wake_up: %s\r\n",
+    /* Clear device status */
+    res = sen5x_clear_device_status(&g_sen5x_handle);
+    sen5x_interface_debug_print("sen5x_clear_device_status: %s\r\n",
                                 (res == 0) ? "OK" : "ERROR");
-    sen5x_interface_delay_ms(10);
 
-    res = sen5x_reinit(&g_sen5x_handle);
-    sen5x_interface_debug_print("sen5x_reinit: %s\r\n",
-                                (res == 0) ? "OK" : "ERROR");
-    sen5x_interface_delay_ms(20);
-
-    /* raw get_reg for sensor variant while in idle */
-    res = sen5x_get_reg(&g_sen5x_handle, 0x202F, raw_buf, 3, 1);
-    sen5x_interface_debug_print("sen5x_get_reg(0x202F): %s (res=%d, bytes=%02X %02X %02X)\r\n",
-                                (res == 0) ? "OK" : "ERROR",
-                                res,
-                                raw_buf[0], raw_buf[1], raw_buf[2]);
-
-    /* DO NOT call sen5x_set_reg(0x202F): it's a read-only command */
+    /* Raw get_reg for some variant/sanity check */
+    res = sen5x_get_reg(&g_sen5x_handle, 0x202F, raw_buf, 3);
+    sen5x_interface_debug_print(
+        "sen5x_get_reg(0x202F): %s (res=%d, bytes=%02X %02X %02X)\r\n",
+        (res == 0) ? "OK" : "ERROR",
+        res,
+        raw_buf[0], raw_buf[1], raw_buf[2]
+    );
+    /* NOTE: we do NOT write this register. */
 
     /* deinit */
     res = sen5x_deinit(&g_sen5x_handle);
     sen5x_interface_debug_print("sen5x_deinit: %s\r\n",
                                 (res == 0) ? "OK" : "ERROR");
 
-    sen5x_interface_debug_print("===== SCD4x FULL SELF-TEST DONE =====\r\n");
+    sen5x_interface_debug_print("===== SEN5X FULL SELF-TEST DONE =====\r\n");
 }

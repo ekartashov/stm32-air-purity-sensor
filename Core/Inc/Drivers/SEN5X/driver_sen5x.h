@@ -866,7 +866,6 @@ uint8_t sen5x_get_device_status(sen5x_handle_t *handle, uint32_t *status);
  * @note      none
  */
 uint8_t sen5x_clear_device_status(sen5x_handle_t *handle);
-
 /**
  * @brief     reset the chip
  * @param[in] *handle pointer to a sen5x handle structure
@@ -878,6 +877,19 @@ uint8_t sen5x_clear_device_status(sen5x_handle_t *handle);
  * @note      none
  */
 uint8_t sen5x_reset(sen5x_handle_t *handle);
+
+/**
+ * @brief     persist settings to nvm
+ * @param[in] *handle pointer to a sen5x handle structure
+ * @return    status code
+ *            - 0 success
+ *            - 1 persist settings failed
+ *            - 2 handle is NULL
+ *            - 3 handle is not initialized
+ * @note      none
+ */
+uint8_t sen5x_persist_settings(sen5x_handle_t *handle);
+
 
 /**
  * @}

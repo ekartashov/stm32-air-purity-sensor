@@ -34,9 +34,10 @@
  * </table>
  */
 
-#include "driver_sen5x_interface.h"
-#include "usbd_cdc_if.h"
 #include <stdarg.h>
+#include "main.h"
+#include "driver_sen5x_interface.h"
+#include "driver_serial.h"
 
 extern I2C_HandleTypeDef SENSORS_HI2C;
 
@@ -67,38 +68,38 @@ uint8_t sen5x_interface_iic_deinit(void)
 }
 
 /**
- * @brief      interface iic bus read
- * @param[in]  addr iic device write address
- * @param[out] *buf pointer to a data buffer
- * @param[in]  len length of the data buffer
- * @return     status code
- *             - 0 success
- *             - 1 read failed
- * @note       none
- */
+  * @brief      interface iic bus read
+  * @param[in]  addr iic device write address
+  * @param[out] *buf pointer to a data buffer
+  * @param[in]  len length of the data buffer
+  * @return     status code
+  *             - 0 success
+  *             - 1 read failed
+  * @note       none
+  */
 uint8_t sen5x_interface_iic_read_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
-  if(HAL_I2C_Master_Transmit(&SENSORS_HI2C, addr << 1, buf, len, 100) == HAL_OK) {
+  if(HAL_I2C_Master_Receive(&SENSORS_HI2C, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
   }
   return 1;
 }
 
 /**
- * @brief     interface iic bus write
- * @param[in] addr iic device write address
- * @param[in] *buf pointer to a data buffer
- * @param[in] len length of the data buffer
- * @return    status code
- *            - 0 success
- *            - 1 write failed
- * @note      none
- */
+  * @brief     interface iic bus write
+  * @param[in] addr iic device write address
+  * @param[in] *buf pointer to a data buffer
+  * @param[in] len length of the data buffer
+  * @return    status code
+  *            - 0 success
+  *            - 1 write failed
+  * @note      none
+  */
 uint8_t sen5x_interface_iic_write_cmd(uint8_t addr, uint8_t *buf, uint16_t len)
 {
-  if(HAL_I2C_Master_Receive(&SENSORS_HI2C, addr << 1, buf, len, 100) == HAL_OK) {
+  if(HAL_I2C_Master_Transmit(&SENSORS_HI2C, addr << 1, buf, len, 100) == HAL_OK) {
     return 0;
-  } 
+  }
   return 1;
 }
 
@@ -119,24 +120,8 @@ void sen5x_interface_delay_ms(uint32_t ms)
  */
 void sen5x_interface_debug_print(const char *const fmt, ...)
 {
-  char buf[256];
-
   va_list args;
   va_start(args, fmt);
-  // Leave space for the newline and null terminator by subtracting 2
-  int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args); 
+  serial_vprint(fmt, args);
   va_end(args);
-
-  if (len < 0)
-  {
-      return;
-  }
-  
-  
-  buf[len] = '\r'; // Append the reset caddy
-  len++;           // Increase length to account for the newline
-  buf[len] = '\0'; // Keep it null-terminated
-
-  /* Send over USB CDC */
-  (void)CDC_Transmit_FS((uint8_t *)buf, (uint16_t)len);
 }

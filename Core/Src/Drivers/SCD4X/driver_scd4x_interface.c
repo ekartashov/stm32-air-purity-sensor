@@ -118,24 +118,8 @@ void scd4x_interface_delay_ms(uint32_t ms)
  */
 void scd4x_interface_debug_print(const char *const fmt, ...)
 {
-  char buf[256];
-
   va_list args;
   va_start(args, fmt);
-  // Leave space for the newline and null terminator by subtracting 2
-  int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args); 
+  serial_vprint(fmt, args);
   va_end(args);
-
-  if (len < 0)
-  {
-      return;
-  }
-  
-  
-  buf[len] = '\r'; // Append the reset caddy
-  len++;           // Increase length to account for the newline
-  buf[len] = '\0'; // Keep it null-terminated
-
-  /* Send over USB CDC */
-  (void)CDC_Transmit_FS((uint8_t *)buf, (uint16_t)len);
 }

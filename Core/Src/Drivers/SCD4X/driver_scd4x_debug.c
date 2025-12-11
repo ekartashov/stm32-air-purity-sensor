@@ -2,7 +2,12 @@
 #include "driver_scd4x_interface.h"
 #include "main.h"
 
+/* Global handle for debug use */
 static scd4x_handle_t g_scd4x_handle;
+
+/* One-shot guard so you can call sen5x_run_full_test_once() inside while(1) */
+static uint8_t g_scd4x_full_test_ran = 0;
+
 
 static void scd4x_init_handle_default(void)
 {
@@ -20,6 +25,12 @@ static void scd4x_init_handle_default(void)
 
 void scd4x_run_full_test_once(void)
 {
+    if (g_scd4x_full_test_ran)
+    {
+        return;
+    }
+    g_scd4x_full_test_ran = 1;
+
     scd4x_info_t info;
     scd4x_bool_t ready;
     uint8_t res;

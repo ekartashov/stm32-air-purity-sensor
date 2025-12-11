@@ -48,6 +48,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/oled_graph.c
 
     ## Drivers
+    Core/Src/Drivers/Serial/driver_serial.c
+
     Core/Src/Drivers/Buzzer/driver_pwm-buzzer_interface.c
     Core/Src/Drivers/Buzzer/driver_pwm-buzzer.c
 
@@ -61,6 +63,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     
     Core/Src/Drivers/SEN5X/driver_sen5x.c
     Core/Src/Drivers/SEN5X/driver_sen5x_interface.c
+    Core/Src/Drivers/SEN5X/driver_sen5x_debug.c
 )
 
 # Add include paths
@@ -69,6 +72,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Inc/Drivers/OLED
     Core/Inc/Drivers/SCD4X
     Core/Inc/Drivers/SEN5X
+    Core/Inc/Drivers/Serial
 )
 
 # Add project symbols (macros)
