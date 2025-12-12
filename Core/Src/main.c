@@ -18,8 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32l4xx_hal.h"
-#include "stm32l4xx_hal_gpio.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -185,9 +183,6 @@ int main(void)
   ssd1306_UpdateScreen();
   HAL_Delay(100);
 
-  /* USER CODE END 2 */
-
-  /* USER CODE BEGIN WHILE */
   if (in_debug_mode) 
   {
     ssd1306_DisplayDebugMode();
@@ -202,9 +197,15 @@ int main(void)
   int counter = 0;
   int arrangement = 1;
   uint32_t start_time = HAL_GetTick();
+  /* USER CODE END 2 */
 
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
     uint32_t current_time = HAL_GetTick();
 
     /* Change arrangement every 10 seconds */
@@ -366,7 +367,6 @@ int main(void)
     /* you can re-enable a small delay if needed for FPS control */
     /* HAL_Delay(50); */
   }
-
   /* USER CODE END 3 */
 }
 
@@ -557,7 +557,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : BTN_1_Pin */
   GPIO_InitStruct.Pin = BTN_1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BTN_1_GPIO_Port, &GPIO_InitStruct);
 
@@ -655,9 +655,7 @@ static void SEN5X_Init(sen5x_handle_t *sen5x_handle_p)
     /* Wait for sensor to start producing data (similar to SCD4X debug test) */
     sen5x_interface_delay_ms(5000); // Wait 5 seconds for first measurement
 }
-/* USER CODE END 4 */
 
-/* USER CODE BEGIN 5 */
 // This function will run various debug tests for different components
 static void run_debug_tests(void)
 {
@@ -705,7 +703,7 @@ bool poll_is_debug_mode()
   }
   return false;
 }
-/* USER CODE END 5 */
+/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
