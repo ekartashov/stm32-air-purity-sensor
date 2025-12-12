@@ -156,8 +156,8 @@ int main(void)
   ssd1306_WriteString(loading_screen_msg, Font_11x18, White);
   ssd1306_UpdateScreen();
 
-  serial_print("Project Name: ", PROJECT_NAME, "\n");
-  serial_print("Project Version: ", PROJECT_VERSION, "\n");
+  serial_print("Project Name: " PROJECT_NAME "\n");
+  serial_print("Project Version: " PROJECT_VERSION "\n");
   char project_name_and_version_msg[] = PROJECT_NAME_AND_VERSION_PADDED;
   for(uint8_t i = 0; i < sizeof(project_name_and_version_msg) / sizeof(char); i++) {
     ssd1306_SetCursor(loading_screen_msg_x, loading_screen_msg_y);
