@@ -205,79 +205,168 @@ int main(void)
 
   while (1)
   {
-    // Check if 10 seconds have passed
     uint32_t current_time = HAL_GetTick();
-    if(current_time - start_time > 10000) {
-        // Move to next arrangement
-        arrangement = (arrangement + 1) % 7;  // 7 different arrangements
-        start_time = current_time;
+
+    /* Change arrangement every 10 seconds */
+    if ((current_time - start_time) > 10000U) {
+      arrangement = (arrangement + 1) % 7;  // 0..6
+      start_time  = current_time;
     }
 
-    // Generate new data for all functions
+    /* Generate some demo data */
     float new_value_1 = 50.0f + 20.0f * sinf(counter * 0.2f);
     float new_value_2 = 50.0f + 20.0f * cosf(counter * 0.2f);
     float new_value_3 = 50.0f + 20.0f * tanf(counter * 0.1f);
     float new_value_4 = (counter % 20 < 10) ? 20.0f : 80.0f;
 
-    // Clamp values to prevent extreme spikes
-    if(new_value_3 > 100.0f) new_value_3 = 100.0f;
-    if(new_value_3 < 0.0f) new_value_3 = 0.0f;
+    /* Clamp crazy tan() spikes */
+    if (new_value_3 > 100.0f) new_value_3 = 100.0f;
+    if (new_value_3 <   0.0f) new_value_3 =   0.0f;
 
-    // Add new data to each buffer
     ring_buffer_push(&sensor_ring_buffer_1, new_value_1);
     ring_buffer_push(&sensor_ring_buffer_2, new_value_2);
     ring_buffer_push(&sensor_ring_buffer_3, new_value_3);
     ring_buffer_push(&sensor_ring_buffer_4, new_value_4);
 
-    // Clear screen
     ssd1306_Fill(Black);
 
-    // Select and arrange graphs based on current arrangement
-    switch(arrangement) {
-        case 0:
-            // 1 graph spanning full screen
-            // Using the new API - we'll use graph_plot directly for this case
-            graph_plot(&sensor_ring_buffer_1, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 1, 0.0f, 100.0f, "CO2");
-            break;
-        case 1:
-            // 2 graphs: Top-bottom
-            // Debug: Draw graph boundaries to visualize the issue
-            graph_plots_1t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC");
-            break;
-        case 2:
-            // 2 graphs: Left-right
-            graph_plots_1l1r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC");
-            break;
-        case 3:
-            // 3 graphs: 1 wide on top, 2 shallow on bottom
-            graph_plots_1t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx");
-            break;
-        case 4:
-            // 3 graphs: 2 shallow on top, 1 wide on bottom
-            graph_plots_2t1b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "PM");
-            break;
-        case 5:
-            // 3 graphs: 1 tall on left, 2 short on right
-            graph_plots_1l2r(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx");
-            break;
-        case 6:
-            // 4 graphs: 2x2 grid (custom size)
-            graph_plots_2t2b(&sensor_ring_buffer_1, &sensor_ring_buffer_2, &sensor_ring_buffer_3, &sensor_ring_buffer_4, 0, 0, SSD1306_WIDTH, SSD1306_HEIGHT, 2, "CO2", "VOC", "NOx", "PM");
-            break;
+    /* Decide which label should blink (one at a time).
+       Blink slot changes every 2 seconds, modulo number of graphs. */
+    uint32_t blink_slot = (current_time / 2000U);
+    uint8_t  blinking_index = GRAPH_BLINK_NONE;
+
+    switch (arrangement) {
+      case 0:
+        blinking_index = 0;                // only one graph
+        break;
+      case 1:
+      case 2:
+        blinking_index = (uint8_t)(blink_slot % 2U);
+        break;
+      case 3:
+      case 4:
+      case 5:
+        blinking_index = (uint8_t)(blink_slot % 3U);
+        break;
+      case 6:
+        blinking_index = (uint8_t)(blink_slot % 4U);
+        break;
+      default:
+        blinking_index = GRAPH_BLINK_NONE;
+        break;
     }
 
-    // Draw debug visualization (this will show the blinking dots and screen outline)
-    // debug_screen_edges();
+    /* By default no graphs are hidden */
+    uint8_t hidden_mask = 0U;
 
-    // Update the display
+    switch (arrangement) {
+      case 0:
+        /* Single full-screen graph, blinking label */
+        graph_plot_ex(&sensor_ring_buffer_1,
+                      0, 0,
+                      SSD1306_WIDTH, SSD1306_HEIGHT,
+                      1,
+                      0.0f, 100.0f,
+                      "CO2",
+                      1,              /* blink label */
+                      0);             /* not hidden */
+        break;
+
+      case 1:
+        /* 2 graphs: top/bottom */
+        graph_plots_1t1b_ex(&sensor_ring_buffer_1, &sensor_ring_buffer_2,
+                            0, 0,
+                            SSD1306_WIDTH, SSD1306_HEIGHT,
+                            2,
+                            "CO2", "VOC",
+                            blinking_index,
+                            hidden_mask);
+        break;
+
+      case 2:
+        /* 2 graphs: left/right */
+        graph_plots_1l1r_ex(&sensor_ring_buffer_1, &sensor_ring_buffer_2,
+                            0, 0,
+                            SSD1306_WIDTH, SSD1306_HEIGHT,
+                            2,
+                            "CO2", "VOC",
+                            blinking_index,
+                            hidden_mask);
+        break;
+
+      case 3:
+        /* 3 graphs: 1 top, 2 bottom */
+        graph_plots_1t2b_ex(&sensor_ring_buffer_1,
+                            &sensor_ring_buffer_2,
+                            &sensor_ring_buffer_3,
+                            0, 0,
+                            SSD1306_WIDTH, SSD1306_HEIGHT,
+                            2,
+                            "CO2", "VOC", "NOx",
+                            blinking_index,
+                            hidden_mask);
+        break;
+
+      case 4:
+        /* 3 graphs: 2 top, 1 bottom */
+        graph_plots_2t1b_ex(&sensor_ring_buffer_1,
+                            &sensor_ring_buffer_2,
+                            &sensor_ring_buffer_3,
+                            0, 0,
+                            SSD1306_WIDTH, SSD1306_HEIGHT,
+                            2,
+                            "CO2", "VOC", "PM",
+                            blinking_index,
+                            hidden_mask);
+        break;
+
+      case 5:
+        /* 3 graphs: 1 left, 2 right */
+        graph_plots_1l2r_ex(&sensor_ring_buffer_1,
+                            &sensor_ring_buffer_2,
+                            &sensor_ring_buffer_3,
+                            0, 0,
+                            SSD1306_WIDTH, SSD1306_HEIGHT,
+                            2,
+                            "CO2", "VOC", "NOx",
+                            blinking_index,
+                            hidden_mask);
+        break;
+
+      case 6:
+      default:
+      {
+        /* 4 graphs: 2x2 grid
+           --- Option 1 demo ---
+           Bottom-right graph (index 3) is *hidden*:
+           - we set GRAPH_HIDE_3 in the mask
+           - we pass buffer4 = NULL
+           The library will treat that slot as blank. */
+
+        hidden_mask = GRAPH_HIDE_3;
+
+        ring_buffer_t *br_buffer = NULL;      /* bottom-right omitted */
+        const char    *br_label  = "PM";      /* label ignored because slot hidden */
+
+        graph_plots_2t2b_ex(&sensor_ring_buffer_1, &sensor_ring_buffer_2,
+                            &sensor_ring_buffer_3, br_buffer,
+                            0, 0,
+                            SSD1306_WIDTH, SSD1306_HEIGHT,
+                            2,
+                            "CO2", "VOC", "NOx", br_label,
+                            blinking_index,
+                            hidden_mask);
+        break;
+      }
+    }
+
     ssd1306_UpdateScreen();
 
     counter++;
-    // HAL_Delay(100);
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
+    /* you can re-enable a small delay if needed for FPS control */
+    /* HAL_Delay(50); */
   }
+
   /* USER CODE END 3 */
 }
 
