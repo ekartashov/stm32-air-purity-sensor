@@ -120,18 +120,33 @@ void serial_print(const char *fmt, ...);
 #define AIR_SENSOR_STOP_IF_INTERVAL_GT_S (30U)
 
 /* OLED refresh for blinking legends (frame rate) */
-#define UI_OLED_REFRESH_MS (0U)
+#define UI_OLED_REFRESH_MS (100U)
 
 /* Auto-advance active legend/page */
 #define UI_LEGEND_STEP_S (10U)
 #define UI_LEGEND_STEP_MS (UI_LEGEND_STEP_S * 1000U)
 
 /* Button handling */
-#define BTN_DEBOUNCE_MS (50U)
-#define BTN_LONG_PRESS_MS (3000U)
+#define BTN_DEBOUNCE_MS        (50U)
+#define BTN_LONG_PRESS_MS      (1000U)  /* display sleep toggle */
+#define BTN_MUTE_TOGGLE_MS     (5000U)  /* mute/unmute */
 
 /* CO2 delta uses an "outdoor baseline" */
 #define AIR_CO2_OUTDOOR_PPM (420U)
+
+/* Alarm behavior */
+#define AIR_ALARM_SUSTAIN_S            (120U)                 /* 2 minutes */
+#define AIR_ALARM_SUSTAIN_MS           (AIR_ALARM_SUSTAIN_S * 1000U)
+
+#define AIR_ALARM_EXTREME_S            (300U)                 /* 5 minutes */
+#define AIR_ALARM_EXTREME_MS           (AIR_ALARM_EXTREME_S * 1000U)
+
+/* Any pollutant >= (HIGH threshold * multiplier) is “extreme” */
+#define AIR_ALARM_EXTREME_MULTIPLIER   (1.5f)
+
+/* If 1: alarm will auto-wake the display from display-sleep */
+#define AIR_ALARM_WAKE_ON_ALARM        (1U)
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
