@@ -109,7 +109,7 @@ void serial_print(const char *fmt, ...);
 /* USER CODE BEGIN Private defines */
 /* === Project Data === */
 #define PROJECT_NAME "Air Purity Sensor"
-#define PROJECT_VERSION "2.0.0"
+#define PROJECT_VERSION "2.4.2"
 #define PROJECT_NAME_AND_VERSION_PADDED                                        \
   "   " PROJECT_NAME " VERSION: " PROJECT_VERSION "   "
 /* === Sampling / UI timing === */

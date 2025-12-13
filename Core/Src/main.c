@@ -1068,8 +1068,8 @@ static void enter_low_power_mode(void) {
   ssd1306_UpdateScreen();
   HAL_Delay(1000);
 
-  (void)scd4x_stop_periodic_measurement(&scd4x_handle);
-  (void)sen5x_stop_measurement(&sen5x_handle);
+  // (void)scd4x_stop_periodic_measurement(&scd4x_handle);
+  // (void)sen5x_stop_measurement(&sen5x_handle);
 
   leds_set_level(AQ_LEVEL_LOW);
   HAL_GPIO_WritePin(LED_LOW_GPIO_Port, LED_LOW_Pin, GPIO_PIN_RESET);
@@ -1078,7 +1078,7 @@ static void enter_low_power_mode(void) {
 
   ssd1306_SetDisplayOn(0);
 
-  HAL_SuspendTick();
+  // HAL_SuspendTick();
   g_btn_wake = 0U;
 
   while (g_btn_wake == 0U) {
