@@ -28,40 +28,57 @@ bool usb_cdc_is_configured(void)
 
 void serial_vprint(const char *fmt, va_list args)
 {
-    char buf[256];
+    char buf[SERIAL_TX_BUF_SZ];
 
-    /* Format string into buffer, leaving space for '\r' and '\0' */
-    int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args);
+    int len = vsnprintf(buf, sizeof(buf), fmt, args);
     if (len < 0) {
         return;
     }
-    if (len > (int)(sizeof(buf) - 3)) {
-        len = (int)(sizeof(buf) - 3);
+    if ((size_t)len >= sizeof(buf)) {
+        len = (int)sizeof(buf) - 1;
+        buf[len] = '\0';
     }
 
-    buf[len] = '\r';   /* append CR (your terminal already shows LF) */
-    len++;
-    buf[len] = '\0';
+    /* Normalize trailing line ending: strip trailing \r/\n and add \r\n */
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+        buf[--len] = '\0';
+    }
+    if ((size_t)(len + 2) < sizeof(buf)) {
+        buf[len++] = '\r';
+        buf[len++] = '\n';
+        buf[len] = '\0';
+    }
 
-    /* If USB is not configured yet, just drop the message.
-     * The idea: in places where you care (like early boot),
-     * first call:
-     *   while (!usb_cdc_is_configured()) HAL_Delay(5);
-     * and only then use serial_print().
-     */
     if (!usb_cdc_is_configured()) {
         return;
     }
 
-    /* Try to transmit, simple retry loop if BUSY */
-    const uint32_t timeout_ms = 20;
-    uint32_t start = HAL_GetTick();
+    USBD_CDC_HandleTypeDef *hcdc =
+        (USBD_CDC_HandleTypeDef *)hUsbDeviceFS.pClassData;
+    if (hcdc == NULL) {
+        return;
+    }
 
-    while (CDC_Transmit_FS((uint8_t *)buf, (uint16_t)len) == USBD_BUSY) {
-        if ((HAL_GetTick() - start) > timeout_ms) {
-            /* still busy, give up */
+    /* Wait until previous TX completes */
+    uint32_t t0 = HAL_GetTick();
+    while (hcdc->TxState != 0U) {
+        if ((HAL_GetTick() - t0) > SERIAL_TX_RETRY_TIMEOUT_MS) {
             return;
         }
+        HAL_Delay(1);
+    }
+
+    if (CDC_Transmit_FS((uint8_t *)buf, (uint16_t)len) != USBD_OK) {
+        return;
+    }
+
+    /* Wait until this TX completes (prevents stack-buffer corruption) */
+    t0 = HAL_GetTick();
+    while (hcdc->TxState != 0U) {
+        if ((HAL_GetTick() - t0) > SERIAL_TX_RETRY_TIMEOUT_MS) {
+            return;
+        }
+        HAL_Delay(1);
     }
 }
 

@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define SERIAL_TX_RETRY_TIMEOUT_MS 5
+#define SERIAL_TX_BUF_SZ 1024
 
 /**
  * @brief vprintf-style serial output over USB CDC.

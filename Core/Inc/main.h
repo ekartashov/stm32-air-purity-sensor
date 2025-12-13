@@ -1,21 +1,21 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.h
+ * @brief          : Header for main.c file.
+ *                   This file contains the common defines of the application.
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -37,7 +37,35 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+/* === Thresholds (LOW / MID / HIGH) ===
+ * Used for: LED level + normalization to 0..100 for graphs.
+ * Units:
+ *  - CO2 is Δppm above AIR_CO2_OUTDOOR_PPM.
+ *  - PM values are μg/m3 (sensor native).
+ *  - VOC/NOx are Sensirion Index values.
+ */
+typedef enum {
+  AQ_LEVEL_LOW = 0,
+  AQ_LEVEL_MID = 1,
+  AQ_LEVEL_HIGH = 2,
+} aq_level_t;
 
+typedef enum {
+  POL_CO2_DELTA = 0,
+  POL_VOC_INDEX,
+  POL_NOX_INDEX,
+  POL_PM1_UGM3,
+  POL_PM2P5_UGM3,
+  POL_PM4_UGM3,
+  POL_PM10_UGM3,
+  POL_COUNT
+} pollutant_id_t;
+
+typedef struct {
+  float low_max;
+  float mid_max;
+  float graph_max; /* value mapped to 100% */
+} pollutant_thresholds_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -79,7 +107,31 @@ void serial_print(const char *fmt, ...);
 #define LED_HIGH_GPIO_Port GPIOG
 
 /* USER CODE BEGIN Private defines */
+/* === Project Data === */
+#define PROJECT_NAME "Air Purity Sensor"
+#define PROJECT_VERSION "2.0.0"
+#define PROJECT_NAME_AND_VERSION_PADDED                                        \
+  "   " PROJECT_NAME " VERSION: " PROJECT_VERSION "   "
+/* === Sampling / UI timing === */
+#define AIR_SENSOR_SAMPLE_INTERVAL_S (5U)
+#define AIR_SENSOR_SAMPLE_INTERVAL_MS (AIR_SENSOR_SAMPLE_INTERVAL_S * 1000U)
 
+/* If interval > this: start sensors, read once, then stop them */
+#define AIR_SENSOR_STOP_IF_INTERVAL_GT_S (30U)
+
+/* OLED refresh for blinking legends (frame rate) */
+#define UI_OLED_REFRESH_MS (0U)
+
+/* Auto-advance active legend/page */
+#define UI_LEGEND_STEP_S (10U)
+#define UI_LEGEND_STEP_MS (UI_LEGEND_STEP_S * 1000U)
+
+/* Button handling */
+#define BTN_DEBOUNCE_MS (50U)
+#define BTN_LONG_PRESS_MS (3000U)
+
+/* CO2 delta uses an "outdoor baseline" */
+#define AIR_CO2_OUTDOOR_PPM (420U)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

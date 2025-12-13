@@ -24,6 +24,9 @@ static float sensor_data_1[GRAPH_BUFFER_SIZE];
 static float sensor_data_2[GRAPH_BUFFER_SIZE];
 static float sensor_data_3[GRAPH_BUFFER_SIZE];
 static float sensor_data_4[GRAPH_BUFFER_SIZE];
+static float sensor_data_5[GRAPH_BUFFER_SIZE];
+static float sensor_data_6[GRAPH_BUFFER_SIZE];
+static float sensor_data_7[GRAPH_BUFFER_SIZE];
 
 /**
  * @brief Ring buffer structures for sensor data
@@ -59,6 +62,28 @@ ring_buffer_t sensor_ring_buffer_4 = {
     .count = 0
 };
 
+ring_buffer_t sensor_ring_buffer_5 = {
+    .data  = sensor_data_5,
+    .size  = GRAPH_BUFFER_SIZE,
+    .head  = 0,
+    .count = 0
+};
+
+ring_buffer_t sensor_ring_buffer_6 = {
+    .data  = sensor_data_6,
+    .size  = GRAPH_BUFFER_SIZE,
+    .head  = 0,
+    .count = 0
+};
+
+ring_buffer_t sensor_ring_buffer_7 = {
+    .data  = sensor_data_7,
+    .size  = GRAPH_BUFFER_SIZE,
+    .head  = 0,
+    .count = 0
+};
+
+
 /* ---------- Blinking state ---------- */
 
 /* Blink phase: 0 = label OFF, 1 = label ON */
@@ -67,7 +92,7 @@ static uint8_t  s_blink_phase   = 1u;
 static uint16_t s_blink_counter = 0u;
 
 /* How many frames between phase toggles (bigger = slower blink) */
-#define GRAPH_BLINK_PERIOD_FRAMES 20u
+#define GRAPH_BLINK_PERIOD_FRAMES 5u
 
 static void graph_blink_tick(void)
 {

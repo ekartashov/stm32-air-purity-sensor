@@ -13,29 +13,29 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-#include <stddef.h>
 #include "driver_pwm-buzzer_interface.h"
+#include <stddef.h>
+#include <stdint.h>
 
 /**
  * @brief Note frequencies (in Hz)
  *
  * Standard musical note frequencies for C4 through B5
  */
-#define NOTE_C4  262
-#define NOTE_D4  294
-#define NOTE_E4  330
-#define NOTE_F4  349
-#define NOTE_G4  392
-#define NOTE_A4  440
-#define NOTE_B4  494
-#define NOTE_C5  523
-#define NOTE_D5  587
-#define NOTE_E5  659
-#define NOTE_F5  698
-#define NOTE_G5  784
-#define NOTE_A5  880
-#define NOTE_B5  988
+#define NOTE_C4 262
+#define NOTE_D4 294
+#define NOTE_E4 330
+#define NOTE_F4 349
+#define NOTE_G4 392
+#define NOTE_A4 440
+#define NOTE_B4 494
+#define NOTE_C5 523
+#define NOTE_D5 587
+#define NOTE_E5 659
+#define NOTE_F5 698
+#define NOTE_G5 784
+#define NOTE_A5 880
+#define NOTE_B5 988
 
 /**
  * @brief Base unit for tempo calculation
@@ -50,8 +50,8 @@ extern "C" {
  * Contains a note frequency and its duration
  */
 typedef struct {
-    uint16_t note;      /**< Frequency of the note in Hz */
-    uint16_t duration;  /**< Duration of the note in milliseconds */
+  uint16_t note;     /**< Frequency of the note in Hz */
+  uint16_t duration; /**< Duration of the note in milliseconds */
 } Buzzer_Note;
 
 /**

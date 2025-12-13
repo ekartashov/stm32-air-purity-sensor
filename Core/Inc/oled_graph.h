@@ -52,6 +52,9 @@ extern ring_buffer_t sensor_ring_buffer_1;
 extern ring_buffer_t sensor_ring_buffer_2;
 extern ring_buffer_t sensor_ring_buffer_3;
 extern ring_buffer_t sensor_ring_buffer_4;
+extern ring_buffer_t sensor_ring_buffer_5;
+extern ring_buffer_t sensor_ring_buffer_6;
+extern ring_buffer_t sensor_ring_buffer_7;
 
 /* Ring buffer helpers */
 void  ring_buffer_push(ring_buffer_t* buffer, float value);
